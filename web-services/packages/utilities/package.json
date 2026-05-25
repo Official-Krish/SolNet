@@ -1,0 +1,23 @@
+{
+  "name": "@decloud/utilities",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "bullmq": "^5.46.2",
+    "ioredis": "^5.6.1",
+    "jsonwebtoken": "^9.0.2",
+    "express": "^5.1.0"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./auth": "./authMiddleware.ts",
+    "./redis": "./redis.ts"
+  }
+}

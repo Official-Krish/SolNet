@@ -1,21 +1,29 @@
-export const calculatePricePerHour = (cpuCores: number, ramGb: number, diskGb: number): number => {
-    const basePrice = 0.0005; 
-    const cpuPrice = 0.0001;
-    const ramPrice = 0.0002;
-    const diskPrice = 0.00005;
-    let price = basePrice;
-    if (cpuCores > 2) {
-        price += (cpuCores - 2) * cpuPrice;
-    }
-    if (ramGb > 1) {
-        price += (ramGb - 1) * ramPrice;
-    }
-    if (diskGb > 10) {
-        price += (diskGb - 10) * diskPrice;
-    }
-    
-    if (price > 0.05) {
-        price = 0.05;
-    }
-    return price;
-}
+const BASE_PRICE_SOL = 0.0005;
+const CPU_PRICE_PER_CORE_SOL = 0.0001;
+const RAM_PRICE_PER_GB_SOL = 0.0002;
+const DISK_PRICE_PER_GB_SOL = 0.00005;
+const FREE_CPU_CORES = 2;
+const FREE_RAM_GB = 1;
+const FREE_DISK_GB = 10;
+const MAX_PRICE_SOL = 0.05;
+
+export const calculatePricePerHour = (
+  cpuCores: number,
+  ramGb: number,
+  diskGb: number,
+): number => {
+  let price = BASE_PRICE_SOL;
+  if (cpuCores > FREE_CPU_CORES) {
+    price += (cpuCores - FREE_CPU_CORES) * CPU_PRICE_PER_CORE_SOL;
+  }
+  if (ramGb > FREE_RAM_GB) {
+    price += (ramGb - FREE_RAM_GB) * RAM_PRICE_PER_GB_SOL;
+  }
+  if (diskGb > FREE_DISK_GB) {
+    price += (diskGb - FREE_DISK_GB) * DISK_PRICE_PER_GB_SOL;
+  }
+  if (price > MAX_PRICE_SOL) {
+    price = MAX_PRICE_SOL;
+  }
+  return price;
+};

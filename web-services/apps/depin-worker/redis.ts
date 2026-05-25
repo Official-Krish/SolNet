@@ -1,10 +1,3 @@
-import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { createQueue } from "@decloud/utilities/redis";
 
-const connection = new IORedis({
-    host: process.env.REDIS_HOST || 'localhost',
-});
-
-export const initialiseAccount = new Queue("initialise-host-pda", {
-    connection
-})
+export const initialiseAccount = createQueue("initialise-host-pda");
