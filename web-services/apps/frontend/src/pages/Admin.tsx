@@ -22,7 +22,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import type { VM } from 'types/vm';
 import { FundVaultAccount, GetVaultBalance, InitiatesVaultAccount, WithdrawFromVault } from '@/lib/contract';
 import { useAnchorWallet } from '@solana/wallet-adapter-react';

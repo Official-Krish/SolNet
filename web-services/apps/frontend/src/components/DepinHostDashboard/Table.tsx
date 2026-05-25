@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { DEPIN_WORKER } from "@/config";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
 import { Input } from "../ui/input";
 import Tooltip from "../Tooltip";
@@ -19,6 +20,7 @@ import { onboardingScript } from "../DepinHosting/constants/scripts";
 
 export const DashboardTable = ({ machines, setMachines }: { machines: Machine[], setMachines: (machines: Machine[]) => void }) => {
     const wallet = useAnchorWallet();
+    const navigate = useNavigate();
     const [key, setKey] = useState("");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedMachine, setSelectedMachine] = useState<{ id: string, isActive: boolean } | null>(null);
@@ -164,7 +166,7 @@ export const DashboardTable = ({ machines, setMachines }: { machines: Machine[],
                                                 variant="ghost"
                                                 size="sm"
                                                 className="cursor-pointer"
-                                                onClick={() => window.location.href = `depin/machine/${machine.id}`}
+                                                onClick={() => navigate(`/depin/machine/${machine.id}`)}
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>

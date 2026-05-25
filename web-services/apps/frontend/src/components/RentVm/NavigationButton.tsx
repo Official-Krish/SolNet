@@ -2,7 +2,7 @@ import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "../ui/dialog";
 import { motion } from "framer-motion";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import axios from "axios";
 import { BACKEND_URL } from "@/config";
 

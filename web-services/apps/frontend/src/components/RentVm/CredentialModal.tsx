@@ -5,7 +5,7 @@ import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { regions } from "@/lib/constants";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 interface CredentialModalProps {
     isCredentialsOpen: boolean;

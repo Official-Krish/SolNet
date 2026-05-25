@@ -10,7 +10,7 @@ import axios from 'axios';
 import { BACKEND_URL } from '@/config';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 export function SignIn() {
     const { wallet } = useWallet();
@@ -34,31 +34,13 @@ export function SignIn() {
                 publicKey: wallet.adapter.publicKey?.toString(),
             });
             if (res.status === 200) {
-                toast.success("Successfully signed in!", {
-                    position: "bottom-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    theme: "dark",
-                });
+                toast.success("Successfully signed in!");
                 localStorage.setItem('token', `Bearer ${res.data.token}`);
-                localStorage.setItem('emaik', formData.email);
+                localStorage.setItem('email', formData.email);
                 setFormData({ email: ''});
                 navigate('/dashboard');
             } else {
-                toast.error("Failed to sign in. Please try again.", {
-                    position: "bottom-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    theme: "dark",
-                });
+                toast.error("Failed to sign in. Please try again.");
                 console.error("Failed to sign in:", res.data);
             }
         } catch (error) {

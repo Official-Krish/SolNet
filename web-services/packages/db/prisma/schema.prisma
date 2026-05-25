@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -25,7 +24,7 @@ model User {
 
 model VMInstance {
   id            String     @id @default(cuid())
-  userId        String     @unique
+  userId        String
   name          String
   jobId         String    @unique
   PaymentType  PaymentType @default(DURATION)

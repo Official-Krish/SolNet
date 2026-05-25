@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { BACKEND_URL } from "@/config";
 import { useNavigate } from "react-router-dom";
-import { generateUUID } from "three/src/math/MathUtils.js";
+
 import { StartRentalSessionWithEscrow } from "@/lib/Escrow";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
@@ -43,7 +43,7 @@ export const PayementGateway = ({ escrowAmount, setEscrowAmount, form, vmId, Pri
         setDialogOpen(false);
         setVm(null);
         try {
-            const id = generateUUID().substring(0, 32);
+            const id = crypto.randomUUID().substring(0, 32);
             const txn = await StartRentalSessionWithEscrow(wallet!, escrowAmount, id)
             if (!txn || !txn.success) {
                 toast.error("Failed to start rental session with escrow.");

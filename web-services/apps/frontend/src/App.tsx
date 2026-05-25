@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import Landing from './pages/Landing'
 import { Dashboard } from './pages/Dashboard'
 import { RentVM } from './pages/RentVm'
@@ -18,21 +19,23 @@ function App() {
   return (
     <>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing/>} />
-          <Route path="/dashboard" element={<Dashboard/>} />
-          <Route path="/rent" element={<RentVM/>} />
-          <Route path="/vm/:id" element={<VMDetails/>} />
-          <Route path="/hosting" element={<Hosting/>} />
-          <Route path="/signup" element={<SignUp/>} />
-          <Route path="/signin" element={<SignIn/>} />
-          <Route path="/ssh/:id" element={<SSHTerminal/>} />
-          <Route path="/admin" element={<AdminPage/>} />
-          <Route path="/depin/register" element={<HostRegister/>} />
-          <Route path="/depin/host/dashboard" element={<HostDashboard/>} />
-          <Route path="/depin/deploy" element={<DeployApp/>} />
-          <Route path="*" element={<ComingSoon isDepin={false}/>} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Landing/>} />
+            <Route path="/dashboard" element={<Dashboard/>} />
+            <Route path="/rent" element={<RentVM/>} />
+            <Route path="/vm/:id" element={<VMDetails/>} />
+            <Route path="/hosting" element={<Hosting/>} />
+            <Route path="/signup" element={<SignUp/>} />
+            <Route path="/signin" element={<SignIn/>} />
+            <Route path="/ssh/:id" element={<SSHTerminal/>} />
+            <Route path="/admin" element={<AdminPage/>} />
+            <Route path="/depin/register" element={<HostRegister/>} />
+            <Route path="/depin/host/dashboard" element={<HostDashboard/>} />
+            <Route path="/depin/deploy" element={<DeployApp/>} />
+            <Route path="*" element={<ComingSoon isDepin={false}/>} />
+          </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
     </>
   )

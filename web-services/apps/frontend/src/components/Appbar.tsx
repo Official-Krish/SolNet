@@ -3,10 +3,12 @@ import { Button } from "./ui/button";
 import { motion, useMotionValueEvent, useScroll } from "framer-motion";
 import { NavbarItems } from "./NavbarItems";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useNavigate } from "react-router-dom";
 import UserProfileDropdown from "./user-dropdown";
 
 export const Appbar = () => {
     const { wallet } = useWallet();
+    const navigate = useNavigate();
     const [hovered, setHovered] = useState<number | null>(null);
     const [scrolled, setScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -52,7 +54,7 @@ export const Appbar = () => {
             >
                 <div className="flex justify-between items-center shadow-sm">
                     <div className="flex items-center gap-2 p-4 cursor-pointer"
-                        onClick={() => window.location.href = "/"}
+                        onClick={() => navigate("/")}
                     >
                         <img
                             src="https://assets.krishdev.xyz/DeCloud/Logo.png"
@@ -70,7 +72,7 @@ export const Appbar = () => {
                                 className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300 cursor-pointer"
                                 onMouseEnter={() => setHovered(idx)}
                                 onMouseLeave={() => setHovered(null)}
-                                onClick={() => item.link && (window.location.href = item.link)}
+                                onClick={() => item.link && navigate(item.link)}
                             >
                                 {hovered === idx && (
                                     <motion.div className="absolute inset-0 rounded-xl w-full h-full bg-neutral-800" layoutId="nav-item"/>
@@ -101,7 +103,7 @@ export const Appbar = () => {
                             :
                             <Button 
                                 className="px-4 py-2 hover:bg-neutral-200 cursor-pointer bg-neutral-100"
-                                onClick={() => window.location.href="/signin"}
+                                onClick={() => navigate("/signin")}
                             >
                                 SignIn
                             </Button>

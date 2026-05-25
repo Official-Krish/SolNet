@@ -11,7 +11,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 import axios from 'axios';
 import { BACKEND_URL } from '@/config';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 export function SignUp() {
     const wallet = useWallet();

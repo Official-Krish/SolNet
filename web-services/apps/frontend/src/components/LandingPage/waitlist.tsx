@@ -1,7 +1,7 @@
 import { VanishInput } from "../ui/vanish-input";
 import { useState } from "react";
 import { Spotlight } from "../ui/spotLight";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 export default function WaitList() {
   const [email, setEmail] = useState("");

@@ -107,7 +107,8 @@ vm.post("/topup", authMiddleware, async (req, res) => {
         const { id, amount, additionalEscrowDuration } = parsedData.data;
         const vmInstance = await prisma.vMInstance.findFirst({
             where: { 
-                id: id
+                id: id,
+                userId: userId,
             },
         });
         if (!vmInstance) {

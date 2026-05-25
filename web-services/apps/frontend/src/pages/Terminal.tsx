@@ -10,11 +10,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Terminal as TerminalIcon, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/components/themeProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useNavigate } from 'react-router-dom';
 import 'xterm/css/xterm.css';
 import { WS_RELAYER_URL } from '@/config';
 
 const SSHTerminal = () => {
     const wallet = useWallet(); 
+    const navigate = useNavigate();
     const [isConnected, setIsConnected] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [token, setToken] = useState('');
@@ -126,9 +128,6 @@ const SSHTerminal = () => {
                         }));
                         if (commandBuffer.trim()) {
                             setCommandHistory((prevHistory) => [...prevHistory, commandBuffer.trim()]);
-                            if (commandBuffer.trim()) {
-                                setCommandHistory((prevHistory) => [...prevHistory, commandBuffer.trim()]);
-                            }
                         }
                         setHistoryIndex(-1);
                         commandBuffer = '';
@@ -292,7 +291,7 @@ const SSHTerminal = () => {
     }, []);
 
     if (!wallet.connected || !localStorage.getItem("token")) {
-        window.location.href = '/signin';
+        navigate('/signin');
         return null;
     }
 

@@ -5,12 +5,13 @@ import { type Machine } from "../../types/depinMachines";
 import axios from "axios";
 import { DEPIN_WORKER } from "@/config";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { DashboardTable } from "@/components/DepinHostDashboard/Table";
 import { Plus } from "lucide-react";
 
 export function HostDashboard() {
     const wallet = useWallet();
+    const navigate = useNavigate();
     const [machines, setMachines] = useState<Machine[]>([]);
 
     useEffect(() => {
@@ -70,7 +71,7 @@ export function HostDashboard() {
                     </div>
                     <Button 
                         className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:shadow-xl text-white cursor-pointer"
-                        onClick={() => window.location.href = '/depin/register'}
+                        onClick={() => navigate('/depin/register')}
                     >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Machine

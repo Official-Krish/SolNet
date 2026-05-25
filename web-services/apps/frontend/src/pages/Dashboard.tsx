@@ -11,7 +11,7 @@ import { type VM } from "../../types/vm";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { formatter } from "@/lib/FormatTime";
 import { getVmDetails } from "@/lib/vm";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 export function Dashboard() {
     const [searchQuery, setSearchQuery] = useState("");

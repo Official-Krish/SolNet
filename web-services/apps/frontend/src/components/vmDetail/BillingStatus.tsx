@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Zap, Wallet } from "lucide-react";
 import type { VM } from "types/vm";
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { calculateEscrowEndTime, calculatePrice } from "@/lib/vm";
 import { TopUpEscrowSession } from "@/lib/Escrow";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";

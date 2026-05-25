@@ -4,7 +4,8 @@ import { User, Settings, LogOut, Wallet, Mail, Shield, Copy } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface UserProfileDropdownProps {
   isOpen: boolean;
@@ -12,11 +13,12 @@ interface UserProfileDropdownProps {
 }
 
 const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
+  const navigate = useNavigate();
   const { wallet, publicKey } = useWallet();
   
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href="/";
+    navigate("/");
     onClose();
   };
 
@@ -88,16 +90,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                         <Copy className='w-4 h-4 text-muted-foreground cursor-pointer' 
                           onClick={() => {
                             navigator.clipboard.writeText(publicKey.toString());
-                            toast.success("Wallet address copied to clipboard", {
-                              position: "top-right",
-                              autoClose: 3000,
-                              hideProgressBar: false,
-                              closeOnClick: true,
-                              pauseOnHover: true,
-                              draggable: true,
-                              progress: undefined,
-                              theme: "dark",
-                            });
+                            toast.success("Wallet address copied to clipboard");
                           }}
                         />
                       </div>
@@ -173,7 +166,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                 >
                   <Button 
                     onClick={() => {
-                      window.location.href = "/signin";
+                      navigate("/signin");
                       onClose();
                     }}
                     className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg"
@@ -184,7 +177,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                   <Button 
                     variant="outline"
                     onClick={() => {
-                      window.location.href = "/signup";
+                      navigate("/signup");
                       onClose();
                     }}
                     className="w-full border-border hover:bg-accent hover:text-accent-foreground"

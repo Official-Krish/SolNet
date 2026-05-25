@@ -167,11 +167,19 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
                     applicationUrl: `https://${config.id}-solnet.krishdev.xyz`,
                 }
             });
+
+            return config;
+        });
+
+        res.status(200).json({
+            message: "Deployment request sent successfully",
+            id: txn.id,
+            name: txn.name,
         });
     } catch (error) {
-        console.error("Error parsing request body:", error);
-        res.status(400).json({
-            error: "Invalid request body",
+        console.error("Error deploying image:", error);
+        res.status(500).json({
+            error: "Internal server error",
         });
         return;
     }

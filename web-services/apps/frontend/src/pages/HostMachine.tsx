@@ -8,11 +8,12 @@ import { Step2 } from "@/components/DepinHosting/Step2";
 import { Step3 } from "@/components/DepinHosting/Step3";
 import axios from "axios";
 import { DEPIN_WORKER } from "@/config";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 export function HostRegister() {
     const wallet = useWallet();
+    const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [id, setId] = useState<string | null>(null);
@@ -107,7 +108,7 @@ export function HostRegister() {
             {/* Header Section */}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
                 {currentStep === 1 && 
-                    <Button variant="ghost" className="mb-4 cursor-pointer" onClick={() => window.location.href="/"}>
+                    <Button variant="ghost" className="mb-4 cursor-pointer" onClick={() => navigate("/")}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                     </Button>

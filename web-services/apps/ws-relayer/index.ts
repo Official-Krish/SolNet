@@ -3,14 +3,20 @@ import { Client as SSHClient } from "ssh2";
 import { type JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 
-const connections = new Map();
-
-const userSessions = new Map<string, {
+interface Session {
     userId: string;
     allowedVM: string;
     privateKey: string;
     expiresAt: number;
-}>();
+}
+
+interface Connection {
+    ssh: SSHClient;
+    stream: import("ssh2").ClientChannel;
+}
+
+const connections = new Map<ServerWebSocket, Connection>();
+const userSessions = new WeakMap<ServerWebSocket, Session>();
 
 type incomingMessage = {
     type: 'authenticate' | 'connect' | 'command' | 'disconnect';
@@ -36,7 +42,7 @@ Bun.serve({
         message(ws, message) {
             try {
                 const data: incomingMessage = JSON.parse(message.toString());
-                
+
                 if (data.type === 'authenticate') {
                     authenticateUser(ws as ServerWebSocket<undefined>, data.token!);
                 } else if (data.type === 'connect') {
@@ -52,14 +58,12 @@ Bun.serve({
             }
         },
         open(ws) {
-            console.log("WebSocket connection opened");
-            ws.send(JSON.stringify({ 
-                type: 'status', 
-                message: 'Connected to WebSocket. Please authenticate.' 
+            ws.send(JSON.stringify({
+                type: 'status',
+                message: 'Connected to WebSocket. Please authenticate.'
             }));
         },
         close(ws) {
-            console.log("WebSocket connection closed");
             disconnectFromVM(ws as ServerWebSocket<undefined>);
         },
     },
@@ -77,42 +81,40 @@ function authenticateUser(ws: ServerWebSocket<undefined>, token: string) {
             ws.send(JSON.stringify({ type: 'error', message: 'Token expired' }));
             return;
         }
-        userSessions.set(ws as any, {
+        userSessions.set(ws, {
             userId: decoded.userId,
             allowedVM: decoded.allowedVms,
             privateKey: decoded.privateKey,
             expiresAt: decoded.exp * 1000
         });
-        
-        ws.send(JSON.stringify({ 
-            type: 'authenticated', 
+
+        ws.send(JSON.stringify({
+            type: 'authenticated',
             message: 'Authentication successful',
             allowedVMs: decoded.allowedVms
         }));
-        
+
     } catch (err) {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid token' }));
     }
 }
 
 function isAuthenticated(ws: ServerWebSocket<undefined>): boolean {
-    const session = userSessions.get(ws as unknown as string);
+    const session = userSessions.get(ws);
     if (!session) return false;
-    
-    // Check if session is expired
+
     if (session.expiresAt && session.expiresAt < Date.now()) {
-        userSessions.delete(ws as any);
+        userSessions.delete(ws);
         return false;
     }
-    
+
     return true;
 }
 
 function canAccessVM(ws: ServerWebSocket<undefined>, vmHost: string): boolean {
-    const session = userSessions.get(ws as any);
+    const session = userSessions.get(ws);
     if (!session) return false;
-    
-    // Check if user has access to this VM
+
     return session.allowedVM.includes(vmHost) || session.allowedVM.includes('*');
 }
 
@@ -125,67 +127,71 @@ function connectToVM(ws: ServerWebSocket<undefined>, config: {
         ws.send(JSON.stringify({ type: 'error', message: 'Not authenticated' }));
         return;
     }
-    
+
     if (!canAccessVM(ws, config.host)) {
         ws.send(JSON.stringify({ type: 'error', message: 'Access denied to this VM' }));
         return;
     }
-    
-    const session = userSessions.get(ws as unknown as string)!;
+
+    const session = userSessions.get(ws)!;
     const ssh = new SSHClient();
-    
+
+    let cleanedUp = false;
+    function cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        connections.delete(ws);
+        ssh.removeAllListeners();
+        ssh.end();
+    }
+
     ssh.on('ready', () => {
         ws.send(JSON.stringify({ type: 'status', message: 'SSH connected' }));
-        
-        // Create a shell session
+
         ssh.shell((err, stream) => {
             if (err) {
-                console.error('Error creating SSH shell:', err);
                 ws.send(JSON.stringify({ type: 'error', message: err.message }));
-                return;
+                return cleanup();
             }
-            
-            // Store the connection
+
             connections.set(ws, { ssh, stream });
-            
-            // Handle data from SSH stream (VM output)
+
             stream.on('data', (data: any) => {
-                ws.send(JSON.stringify({ 
-                    type: 'output', 
-                    data: data.toString() 
+                ws.send(JSON.stringify({
+                    type: 'output',
+                    data: data.toString()
                 }));
             });
-            
+
             stream.on('close', () => {
                 ws.send(JSON.stringify({ type: 'status', message: 'SSH session closed' }));
-                connections.delete(ws);
+                cleanup();
             });
-            
+
             stream.stderr.on('data', (data) => {
-                ws.send(JSON.stringify({ 
-                    type: 'error', 
-                    data: data.toString() 
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    data: data.toString()
                 }));
             });
         });
     });
-    
+
     ssh.on('error', (err) => {
-        console.error('SSH connection error:', err);
         ws.send(JSON.stringify({ type: 'error', message: err.message }));
+        cleanup();
     });
-    
+
     ssh.on('close', () => {
-        console.log('SSH connection closed');
-        connections.delete(ws);
+        cleanup();
     });
-    
-    // Connect to the VM using the user's private key
+
     ssh.connect({
         host: config.host,
         port: config.port || 22,
         username: config.username,
         privateKey: session.privateKey,
+        readyTimeout: 10000,
     });
 }
 
@@ -194,13 +200,13 @@ function sendCommand(ws: ServerWebSocket, command: string) {
         ws.send(JSON.stringify({ type: 'error', message: 'Not authenticated' }));
         return;
     }
-    
+
     const connection = connections.get(ws);
     if (!connection?.stream || connection.stream.destroyed) {
         ws.send(JSON.stringify({ type: 'error', message: 'No active SSH connection' }));
         return;
     }
-    
+
     connection.stream.write(command + '\n');
 }
 
@@ -215,6 +221,6 @@ function disconnectFromVM(ws: ServerWebSocket) {
         }
         connections.delete(ws);
     }
-    
-    userSessions.delete(ws as any);
+
+    userSessions.delete(ws);
 }

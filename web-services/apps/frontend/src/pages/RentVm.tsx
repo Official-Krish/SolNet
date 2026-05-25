@@ -11,12 +11,12 @@ import { Step3 } from "@/components/RentVm/Step3";
 import { NavigationButton } from "@/components/RentVm/NavigationButton";
 import { CostSummary } from "@/components/RentVm/CostSummary";
 import { CredentialModal } from "@/components/RentVm/CredentialModal";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { TransferToVaultAndStartRental } from "@/lib/contract";
-import { generateUUID } from "three/src/math/MathUtils.js";
+
 import { Step2 } from "@/components/RentVm/Step2";
 import { StartRentalSessionWithEscrow } from "@/lib/Escrow";
 
@@ -101,7 +101,7 @@ export const RentVM = () => {
   const handlePayment = async () => {
     setIsConfirmOpen(false);
     setPaymentStatus("Pending");
-    const id = generateUUID().substring(0, 32);
+    const id = crypto.randomUUID().substring(0, 32);
     const tx = paymentType === "duration" ?  await TransferToVaultAndStartRental(costPerMin * duration, duration, id ,wallet!) : await StartRentalSessionWithEscrow(wallet!, escrowAmount, id);
 
     if (!tx?.success) {

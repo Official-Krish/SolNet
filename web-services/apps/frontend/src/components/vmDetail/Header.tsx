@@ -7,7 +7,7 @@ import { BACKEND_URL } from "@/config";
 import type { VM } from "types/vm";
 import { calculatePrice } from "@/lib/vm";
 import { EndRentalSession, transferFromVault } from "@/lib/contract";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { useState } from "react";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { formatter } from "@/lib/FormatTime";

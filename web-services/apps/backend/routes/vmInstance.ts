@@ -203,7 +203,7 @@ vmInstance.get("/pollStatus", authMiddleware, async (req, res) => {
         await prisma.vMInstance.update({
             where: {
                 id: vmId,
-                instanceId: vmId,
+                instanceId: instanceId,
             },
             data: {
                 status: status,
