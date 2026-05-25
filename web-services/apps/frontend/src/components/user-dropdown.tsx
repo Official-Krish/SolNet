@@ -1,11 +1,18 @@
-import { useWallet } from '@solana/wallet-adapter-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, LogOut, Wallet, Mail, Shield, Copy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useWallet } from "@solana/wallet-adapter-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Settings,
+  LogOut,
+  Wallet,
+  Mail,
+  Shield,
+  Copy,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 interface UserProfileDropdownProps {
   isOpen: boolean;
@@ -13,12 +20,11 @@ interface UserProfileDropdownProps {
 }
 
 const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
-  const navigate = useNavigate();
   const { wallet, publicKey } = useWallet();
-  
+
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/");
+    window.location.href = "/";
     onClose();
   };
 
@@ -26,17 +32,17 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
   const userEmail = localStorage.getItem("email");
 
   const formatWalletAddress = (address: string) => {
-    if (!address) return '';
+    if (!address) return "";
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
   const itemVariants = {
     hidden: { opacity: 0, x: -10 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       x: 0,
-      transition: { duration: 0.2 }
-    }
+      transition: { duration: 0.2 },
+    },
   };
 
   return (
@@ -44,11 +50,8 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-30" 
-            onClick={onClose}
-          />
-          
+          <div className="fixed inset-0 z-30" onClick={onClose} />
+
           {/* Dropdown */}
           <motion.div
             className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-background via-background to-muted/30  backdrop-blur-md border border-border rounded-xl shadow-2xl z-40 overflow-hidden"
@@ -59,35 +62,33 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
             {isLoggedIn ? (
               <div className="p-6">
                 {/* User Info Section */}
-                <motion.div 
+                <motion.div
                   variants={itemVariants}
                   className="flex items-center gap-4 mb-6"
                 >
                   <Avatar className="w-12 h-12 ring-2 ring-primary/20">
-                    <AvatarImage 
-                      src={wallet?.adapter.icon} 
-                      alt="User Avatar"
-                    />
+                    <AvatarImage src={wallet?.adapter.icon} alt="User Avatar" />
                     <AvatarFallback className="bg-primary/10 text-primary">
                       <User className="w-6 h-6" />
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Mail className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground truncate">
-                        {userEmail || 'user@example.com'}
+                        {userEmail || "user@example.com"}
                       </span>
                     </div>
-                    
+
                     {publicKey && (
                       <div className="flex items-center gap-2">
                         <Wallet className="w-4 h-4 text-green-500" />
                         <span className="text-xs font-mono text-green-500 bg-green-500/10 px-2 py-1 rounded-md">
                           {formatWalletAddress(publicKey.toString())}
                         </span>
-                        <Copy className='w-4 h-4 text-muted-foreground cursor-pointer' 
+                        <Copy
+                          className="w-4 h-4 text-muted-foreground cursor-pointer"
                           onClick={() => {
                             navigator.clipboard.writeText(publicKey.toString());
                             toast.success("Wallet address copied to clipboard");
@@ -101,10 +102,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                 <Separator className="mb-4" />
 
                 {/* Menu Items */}
-                <motion.div 
-                  variants={itemVariants}
-                  className="space-y-1"
-                >
+                <motion.div variants={itemVariants} className="space-y-1">
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 h-10 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -112,7 +110,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                     <User className="w-4 h-4" />
                     Profile Settings
                   </Button>
-                  
+
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 h-10 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -120,7 +118,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                     <Shield className="w-4 h-4" />
                     Security
                   </Button>
-                  
+
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 h-10 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -128,9 +126,9 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                     <Settings className="w-4 h-4" />
                     Preferences
                   </Button>
-                  
+
                   <Separator className="my-2" />
-                  
+
                   <Button
                     variant="ghost"
                     onClick={handleLogout}
@@ -144,7 +142,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
             ) : (
               <div className="p-6">
                 {/* Welcome Section */}
-                <motion.div 
+                <motion.div
                   variants={itemVariants}
                   className="text-center mb-6"
                 >
@@ -158,26 +156,23 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                     Sign in to access your decentralized cloud dashboard
                   </p>
                 </motion.div>
-                
+
                 {/* Action Buttons */}
-                <motion.div 
-                  variants={itemVariants}
-                  className="space-y-3"
-                >
-                  <Button 
+                <motion.div variants={itemVariants} className="space-y-3">
+                  <Button
                     onClick={() => {
-                      navigate("/signin");
+                      window.location.href = "/signin";
                       onClose();
                     }}
                     className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg"
                   >
                     Sign In
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     variant="outline"
                     onClick={() => {
-                      navigate("/signup");
+                      window.location.href = "/signup";
                       onClose();
                     }}
                     className="w-full border-border hover:bg-accent hover:text-accent-foreground"
@@ -187,7 +182,7 @@ const UserProfileDropdown = ({ isOpen, onClose }: UserProfileDropdownProps) => {
                 </motion.div>
 
                 {/* Feature Highlight */}
-                <motion.div 
+                <motion.div
                   variants={itemVariants}
                   className="mt-4 p-3 bg-muted/50 rounded-lg"
                 >
