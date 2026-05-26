@@ -15,4 +15,12 @@ export default defineConfig({
   server: {
     allowedHosts: ["localhost", ".krishdev.xyz", ".solnet.krishdev.xyz"],
   },
+  optimizeDeps: {
+    include: [
+      "three-globe",
+      "@react-three/drei",
+      "@react-three/fiber",
+      "three",
+    ],
+  },
 });

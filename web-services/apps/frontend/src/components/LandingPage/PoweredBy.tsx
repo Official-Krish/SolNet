@@ -1,57 +1,151 @@
-import { Globe, Layers, Shield, Zap } from "lucide-react"
+import { motion } from "framer-motion";
+import { Layers, Shield, Globe, Zap, ExternalLink } from "lucide-react";
+
+const metrics = [
+  { label: "Transaction Speed", value: "< 1s" },
+  { label: "Network Fee", value: "$0.001" },
+  { label: "Throughput", value: "65K TPS" },
+  { label: "Uptime", value: "99.9%" },
+];
+
+const features = [
+  {
+    icon: Layers,
+    title: "DePIN Infrastructure",
+    desc: "Decentralized Physical Infrastructure Network — real hardware, real earnings.",
+  },
+  {
+    icon: Shield,
+    title: "Smart Contract Escrow",
+    desc: "Trustless execution with automatic settlement. No middlemen, no disputes.",
+  },
+  {
+    icon: Globe,
+    title: "Global Network",
+    desc: "Distributed compute across 127 countries. Sub-100ms latency worldwide.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Settlement",
+    desc: "Real-time SOL payments streamed per second of compute consumed.",
+  },
+];
 
 export const PoweredBy = () => {
-    return (
-        <section id="technology" className="relative z-10 px-6 py-30 max-w-7xl mx-auto">
-            <div className="bg-slate-900/30 border border-slate-700 rounded-[3rem] p-10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
-                
-                <div className="relative grid md:grid-cols-2 gap-12 items-center">
-                    <div className="space-y-6">
-                        <h2 className="text-4xl md:text-5xl">
-                            Powered by <span className="text-blue-400">Solana</span>
-                        </h2>
-                        <p className="text-xl text-slate-300">
-                            Experience lightning-fast transactions, minimal fees, and seamless global payments 
-                            with the world's most performant blockchain.
-                        </p>
-                    
-                        <div className="grid grid-cols-2 gap-6">
-                            {[
-                                { label: "Transaction Speed", value: "<1s" },
-                                { label: "Network Fee", value: "$0.001" },
-                                { label: "Throughput", value: "65K TPS" },
-                                { label: "Uptime", value: "99.9%" }
-                                ].map((metric, index) => (
-                                <div key={index} className="space-y-2">
-                                    <div className="text-2xl font-bold text-blue-400">{metric.value}</div>
-                                    <div className="text-sm text-slate-400">{metric.label}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+  return (
+    <section className="relative bg-[#050508] py-28 overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
 
-                    <div className="space-y-4">
-                        {[
-                            { icon: Layers, title: "DePIN Infrastructure", desc: "Decentralized Physical Infrastructure Network" },
-                            { icon: Shield, title: "Smart Contracts", desc: "Trustless execution and automatic payments" },
-                            { icon: Globe, title: "Global Network", desc: "Distributed compute across 127 countries" },
-                            { icon: Zap, title: "Instant Settlement", desc: "Real-time SOL payments and escrow" }
-                        ].map((feature, index) => (
-                            <div key={index} className="flex items-start space-x-4 p-4 bg-slate-800/50 rounded-2xl">
-                                <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <feature.icon className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold">{feature.title}</h4>
-                                    <p className="text-sm text-slate-400">{feature.desc}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+      {/* background glow */}
+      <div className="absolute top-1/2 right-0 translate-y-[-50%] w-[500px] h-[500px] bg-cyan-500/6 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
+        {/* heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <p className="text-xs font-bold tracking-widest text-cyan-400 uppercase mb-3">
+            Technology
+          </p>
+          <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+            Powered by{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+              Solana
+            </span>
+          </h2>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Left — metrics card */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="relative rounded-3xl border border-white/8 bg-gradient-to-br from-white/4 to-transparent p-8 overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Solana logo + name */}
+            <div className="flex items-center gap-3 mb-8">
+              <img
+                src="/solana.png"
+                className="w-10 h-10 rounded-full"
+                alt="Solana"
+              />
+              <div>
+                <p className="text-white font-bold">Solana Network</p>
+                <p className="text-white/40 text-xs">
+                  The most performant L1 blockchain
+                </p>
+              </div>
+              <a
+                href="https://solana.com"
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto text-white/20 hover:text-white/50 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
-        </section>
-    )
-}
+
+            {/* Metrics grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {metrics.map((m, i) => (
+                <motion.div
+                  key={m.label}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.1 + i * 0.08 }}
+                  className="rounded-2xl border border-white/6 bg-white/3 px-5 py-4"
+                >
+                  <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+                    {m.value}
+                  </p>
+                  <p className="text-white/40 text-xs mt-1">{m.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Right — feature list */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="flex flex-col gap-3"
+          >
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.15 + i * 0.08 }}
+                className="group flex items-start gap-4 rounded-2xl border border-white/6 bg-white/2 hover:bg-white/5 hover:border-cyan-500/20 p-5 transition-all duration-300"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center shrink-0 group-hover:bg-cyan-500/20 transition-colors duration-300">
+                  <f.icon className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h4 className="text-white font-semibold text-sm mb-1">
+                    {f.title}
+                  </h4>
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    {f.desc}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};

@@ -1,105 +1,154 @@
-import { cn } from "@/lib/utils";
-import { Globe, Code, Shield, Zap } from "lucide-react";
 import { motion } from "framer-motion";
+import { Zap, Shield, Globe, Code2, Server, Coins } from "lucide-react";
+
+const features = [
+  {
+    icon: Zap,
+    title: "Deploy in < 30 Seconds",
+    description:
+      "From wallet connect to a running VM in under half a minute. No lengthy provisioning queues.",
+    accent: "from-yellow-500/20 to-orange-500/10",
+    border: "hover:border-yellow-500/30",
+    iconColor: "text-yellow-400",
+    span: "col-span-1 row-span-1",
+  },
+  {
+    icon: Shield,
+    title: "Smart Contract Escrow",
+    description:
+      "Payments are locked in Solana smart contracts. Funds release only on successful session completion — trustless by design.",
+    accent: "from-violet-500/20 to-purple-500/10",
+    border: "hover:border-violet-500/30",
+    iconColor: "text-violet-400",
+    span: "col-span-2 row-span-1",
+    wide: true,
+  },
+  {
+    icon: Globe,
+    title: "12+ Global Regions",
+    description:
+      "Deploy close to your users. AWS, GCP, or DePIN nodes — all available through a single interface.",
+    accent: "from-cyan-500/20 to-blue-500/10",
+    border: "hover:border-cyan-500/30",
+    iconColor: "text-cyan-400",
+    span: "col-span-1 row-span-1",
+  },
+  {
+    icon: Coins,
+    title: "Zero Credit Cards",
+    description:
+      "Pay with SOL. No KYC, no billing details, no bank approvals. Your wallet is your identity.",
+    accent: "from-emerald-500/20 to-teal-500/10",
+    border: "hover:border-emerald-500/30",
+    iconColor: "text-emerald-400",
+    span: "col-span-1 row-span-1",
+  },
+  {
+    icon: Server,
+    title: "DePIN Node Earnings",
+    description:
+      "Run a node on your idle hardware. Earn SOL every second your resources are in use.",
+    accent: "from-fuchsia-500/20 to-pink-500/10",
+    border: "hover:border-fuchsia-500/30",
+    iconColor: "text-fuchsia-400",
+    span: "col-span-2 row-span-1",
+    wide: true,
+  },
+  {
+    icon: Code2,
+    title: "SSH & CI/CD Ready",
+    description:
+      "Direct SSH terminal access, API keys, and webhooks. Integrates with your existing pipeline in minutes.",
+    accent: "from-blue-500/20 to-indigo-500/10",
+    border: "hover:border-blue-500/30",
+    iconColor: "text-blue-400",
+    span: "col-span-1 row-span-1",
+  },
+];
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
+};
 
 export function FeaturesSection() {
-    const features = [
-        {
-          icon: Zap,
-          title: "Deploy in Seconds",
-          description: "Spin up virtual machines instantly with our streamlined deployment process"
-        },
-        {
-          icon: Shield,
-          title: "Crypto Native",
-          description: "Pay with SOL tokens - no credit cards or lengthy verification processes"
-        },
-        {
-          icon: Globe,
-          title: "Global Infrastructure",
-          description: "Deploy across multiple regions with low-latency access worldwide"
-        },
-        {
-            icon: Code,
-            title: "Developer Friendly",
-            description: "Built for developers with a focus on simplicity and flexibility"
-        }
-    ];
-    return (
-        <div className="relative dark:bg-gradient-to-br from-background via-background to-muted/30">
-            <img
-                src="background.png"
-                className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none"
-            />
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-center mb-16"
-                >
-                    <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                        Why Choose SolNet?
-                    </h2>
-                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Experience the future of cloud computing with our decentralized, crypto-native platform
-                    </p>
-                </motion.div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4  relative z-10 py-10 max-w-7xl mx-auto">
-                {features.map((feature, index) => (
-                    <motion.div
-                        key={feature.title}
-                        initial={{ opacity: 0, x: 20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: index * 0.2 }}
-                    >
-                        <Feature {...feature} index={index} icon={<feature.icon />} />
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-    </div>
+  return (
+    <section className="relative bg-[#050508] py-28 overflow-hidden">
+      {/* top separator */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+
+      {/* background blob */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-violet-600/8 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
+        {/* heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mb-14"
+        >
+          <p className="text-xs font-bold tracking-widest text-violet-400 uppercase mb-3">
+            Platform Features
+          </p>
+          <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+            Everything you need.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
+              Nothing you don't.
+            </span>
+          </h2>
+        </motion.div>
+
+        {/* bento grid */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-3 gap-4 auto-rows-[200px]"
+        >
+          {features.map((f) => (
+            <motion.div
+              key={f.title}
+              variants={cardVariants}
+              className={`group relative rounded-2xl border border-white/8 bg-white/3 backdrop-blur-sm p-6 flex flex-col justify-between overflow-hidden transition-all duration-300 ${f.span} ${f.border} hover:bg-white/5`}
+            >
+              {/* gradient accent */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${f.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+              />
+
+              <div className="relative z-10 flex flex-col gap-4 h-full">
+                {/* icon */}
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                  <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-white text-base mb-1.5">
+                    {f.title}
+                  </h3>
+                  <p className="text-white/45 text-sm leading-relaxed line-clamp-3">
+                    {f.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* corner shimmer */}
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/3 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
   );
 }
-
-const Feature = ({
-  title,
-  description,
-  icon,
-  index,
-}: {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  index: number;
-}) => {
-  return (
-        <div
-            className={cn(
-                "flex flex-col lg:border-r  py-10 relative group/feature dark:border-neutral-800",
-                (index === 0 || index === 4) && "lg:border-l dark:border-neutral-800",
-                index < 4 && "lg:border-b dark:border-neutral-800"
-            )}
-        >
-            {index < 4 && (
-                <div className="opacity-0 group-hover/feature:opacity-100 transition duration-200 absolute inset-0 h-full w-full bg-gradient-to-t from-neutral-100 dark:from-neutral-800 to-transparent pointer-events-none" />
-            )}
-            {index >= 4 && (
-                <div className="opacity-0 group-hover/feature:opacity-100 transition duration-200 absolute inset-0 h-full w-full bg-gradient-to-b from-neutral-100 dark:from-neutral-800 to-transparent pointer-events-none" />
-            )}
-            <div className="mb-4 relative z-10 px-10 text-neutral-600 dark:text-neutral-400">
-                {icon}
-            </div>
-            <div className="text-lg font-bold mb-2 relative z-10 px-10">
-                <div className="absolute left-0 inset-y-0 h-6 group-hover/feature:h-8 w-1 rounded-tr-full rounded-br-full bg-neutral-300 dark:bg-neutral-700 group-hover/feature:bg-blue-500 transition-all duration-200 origin-center" />
-                <span className="group-hover/feature:translate-x-2 transition duration-200 inline-block text-neutral-800 dark:text-neutral-100">
-                {title}
-                </span>
-            </div>
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 max-w-xs relative z-10 px-10">
-                {description}
-            </p>
-        </div>
-  );
-};

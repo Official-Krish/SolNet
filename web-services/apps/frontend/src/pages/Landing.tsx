@@ -1,25 +1,29 @@
-import { FeaturesSection } from "@/components/LandingPage/Features";
-import Hero from "@/components/LandingPage/Hero";
-import { PoweredBy } from "@/components/LandingPage/PoweredBy";
-import { PricingCalculator } from "@/components/LandingPage/PricingCalculator";
-import Steps from "@/components/LandingPage/Steps";
-import WaitList from "@/components/LandingPage/waitlist";
-import { motion } from "framer-motion";
+import GlobalBackground from "@/components/LandingPage/GlobalBackground";
+import HeroSection from "@/components/LandingPage/HeroSection";
+import LiveMetrics from "@/components/LandingPage/LiveMetrics";
+import HowItWorks from "@/components/LandingPage/HowItWorks";
+import EditorialFeatures from "@/components/LandingPage/EditorialFeatures";
+import SOLPaymentFlow from "@/components/LandingPage/SOLPaymentFlow";
+import UseCases from "@/components/LandingPage/UseCases";
+import NetworkMap from "@/components/LandingPage/NetworkMap";
+import PricingConfigurator from "@/components/LandingPage/PricingConfigurator";
+import FinalCTA from "@/components/LandingPage/FinalCTA";
 
-const Landing = () => {
-    return (
-        <motion.div className="dark:bg-neutral-950 bg-neutral-100 min-h-screen realtive"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 2 }}
-        >
-            <Hero/>
-            <FeaturesSection />
-            <PricingCalculator />
-            <Steps />
-            <PoweredBy/>
-            <WaitList />
-        </motion.div>
-    )
+export default function Landing() {
+  return (
+    <div className="relative min-h-screen text-zinc-950">
+      <GlobalBackground />
+      <div className="relative">
+        <HeroSection />
+        <LiveMetrics />
+        <HowItWorks />
+        <EditorialFeatures />
+        <SOLPaymentFlow />
+        <UseCases />
+        <NetworkMap />
+        <PricingConfigurator />
+        <FinalCTA />
+      </div>
+    </div>
+  );
 }
-export default Landing;
