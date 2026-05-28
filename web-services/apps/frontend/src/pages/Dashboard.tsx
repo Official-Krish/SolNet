@@ -267,10 +267,10 @@ export function Dashboard() {
             <Button className="cursor-pointer">Create your first VM</Button>
           </Link>
           <Link
-            to="/depin/deploy"
+            to="/docker/deploy"
             className="block mt-4 text-sm text-primary hover:underline"
           >
-            Or deploy a custom image
+            Or deploy a custom docker image
           </Link>
         </motion.div>
       )}

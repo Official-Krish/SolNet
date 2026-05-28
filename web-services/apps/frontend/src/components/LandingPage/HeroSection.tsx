@@ -295,7 +295,7 @@ export default function HeroSection() {
         }}
       />
 
-      <div className="flex-1 flex items-center max-w-7xl mx-auto w-full px-6 lg:px-12 pt-32 pb-20 relative z-10">
+      <div className="flex-1 flex items-center max-w-7xl mx-auto w-full px-6 lg:px-12 pt-24 pb-20 relative z-10">
         <div className="grid lg:grid-cols-12 gap-x-12 gap-y-16 items-center w-full">
           {/* Content */}
           <div className="lg:col-span-7 relative">

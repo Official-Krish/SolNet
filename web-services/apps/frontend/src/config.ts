@@ -7,8 +7,6 @@ export const SECRET_KEY: string =
 export const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || "";
 export const WS_RELAYER_URL =
   import.meta.env.VITE_WS_RELAYER_URL || "ws://localhost:9093";
-export const DEPIN_WORKER =
-  import.meta.env.VITE_DEPIN_WORKER || "http://localhost:6000";
 
 export const getAdminPublicKey = (): PublicKey => {
   if (!ADMIN_KEY) {

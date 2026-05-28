@@ -17,7 +17,6 @@ import axios from "axios";
 import { BACKEND_URL } from "@/config";
 import { useNavigate } from "react-router-dom";
 import type { Machine } from "types/depinMachines";
-
 import { StartRentalSessionWithEscrow } from "@/lib/Escrow";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import {
@@ -27,6 +26,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
+import { useTxConfirm } from "@/lib/useTxConfirm";
+
+type TxStatus = "idle" | "submitted" | "confirmed" | "failed";
 
 interface PaymentGatewayProps {
   escrowAmount: number;
@@ -46,6 +48,13 @@ interface PaymentGatewayProps {
   setVm: React.Dispatch<React.SetStateAction<Machine | undefined>>;
 }
 
+const STATUS_LABEL: Record<TxStatus, string> = {
+  idle: "Processing payment…",
+  submitted: "Transaction submitted, waiting for confirmation…",
+  confirmed: "Confirmed! Deploying…",
+  failed: "Transaction failed",
+};
+
 export const PayementGateway = ({
   escrowAmount,
   setEscrowAmount,
@@ -54,52 +63,59 @@ export const PayementGateway = ({
   PricePerHour,
   setVm,
 }: PaymentGatewayProps) => {
-  const naviagte = useNavigate();
+  const navigate = useNavigate();
   const wallet = useAnchorWallet();
-  const [loading, setLoading] = useState(false);
+  const { watch } = useTxConfirm(wallet?.publicKey?.toBase58());
+  const [txStatus, setTxStatus] = useState<TxStatus>("idle");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const loading = txStatus !== "idle";
+
   const handlePayment = async () => {
-    setLoading(true);
+    setTxStatus("idle");
     setDialogOpen(false);
     setVm(undefined);
-    try {
-      const id = crypto.randomUUID().substring(0, 32);
-      const txn = await StartRentalSessionWithEscrow(wallet!, escrowAmount, id);
-      if (!txn || !txn.success) {
-        toast.error("Failed to start rental session with escrow.");
-        setLoading(false);
-        return;
-      }
 
-      const res = await axios.post(
-        `${BACKEND_URL}/user/depin/deploy`,
-        {
-          ...form,
-          escrowAmount: escrowAmount,
-          endTime: (escrowAmount / PricePerHour) * 60,
-          VmId: vmId,
-          id: id,
-        },
-        {
-          headers: {
-            Authorization: `${localStorage.getItem("token")}`,
-          },
-        },
-      );
-      if (res.status === 200) {
-        toast.success("Payment successful! Your VM is being deployed.");
-        naviagte("/dashboard");
-        setLoading(false);
-      } else {
-        toast.error("Payment failed. Please try again.");
-        setLoading(false);
-        naviagte("/dashboard");
-      }
-    } catch (error) {
-      toast.error("Payment failed. Please try again.");
-      console.error("Payment error:", error);
+    const id = crypto.randomUUID().substring(0, 32);
+    const txn = await StartRentalSessionWithEscrow(wallet!, escrowAmount, id);
+    if (!txn?.success || !txn.signature) {
+      toast.error("Failed to start rental session with escrow.");
+      return;
     }
+
+    setTxStatus("submitted");
+
+    watch(txn.signature, {
+      onConfirmed: async () => {
+        setTxStatus("confirmed");
+        try {
+          const res = await axios.post(
+            `${BACKEND_URL}/user/depin/deploy`,
+            {
+              ...form,
+              escrowAmount,
+              endTime: (escrowAmount / PricePerHour) * 60,
+              VmId: vmId,
+              id,
+            },
+            { headers: { Authorization: `${localStorage.getItem("token")}` } },
+          );
+          if (res.status === 200) {
+            toast.success("Payment successful! Your VM is being deployed.");
+          } else {
+            toast.error("Payment confirmed but deployment failed.");
+          }
+        } catch {
+          toast.error("Payment confirmed but deployment failed.");
+        }
+        navigate("/dashboard");
+      },
+      onFailed: () => {
+        setTxStatus("failed");
+        toast.error("Transaction failed on-chain.");
+      },
+    });
   };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -121,7 +137,7 @@ export const PayementGateway = ({
           <CardContent className="space-y-6 mt-6">
             <RadioGroup>
               <motion.div
-                className={`flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer'`}
+                className="flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer"
                 whileHover={{ scale: 1.01 }}
               >
                 <RadioGroupItem value="escrow" id="escrow" className="mt-1" />
@@ -185,10 +201,17 @@ export const PayementGateway = ({
           </CardContent>
         </Card>
       )}
+
       {loading && (
-        <div className="flex items-center justify-center space-x-2">
-          <span className="text-xl">Processing payment...</span>
-          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        <div className="flex flex-col items-center justify-center space-y-3 h-64">
+          {txStatus !== "failed" && (
+            <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+          )}
+          <span
+            className={`text-lg ${txStatus === "failed" ? "text-red-500" : ""}`}
+          >
+            {STATUS_LABEL[txStatus]}
+          </span>
         </div>
       )}
 
@@ -206,12 +229,7 @@ export const PayementGateway = ({
                 Escrow Deposit: {escrowAmount} SOL
               </div>
             </div>
-            <Button
-              className="w-full cursor-pointer"
-              onClick={async () => {
-                handlePayment();
-              }}
-            >
+            <Button className="w-full cursor-pointer" onClick={handlePayment}>
               Confirm & Pay with Solana
             </Button>
           </div>

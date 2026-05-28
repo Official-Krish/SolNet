@@ -10,15 +10,13 @@ export const StartRentalSessionWithEscrow = async (
   id: string,
 ) => {
   const program = Contarct(wallet);
-
   try {
     const tx = await program.methods
       .startRentalWithEscrow(new BN(amount * LAMPORTS_PER_SOL), id)
-      .accounts({
-        payer: wallet.publicKey,
-        admin: getAdminPublicKey(),
-      })
+      .accounts({ payer: wallet.publicKey, admin: getAdminPublicKey() })
       .rpc();
+    const conf = await program.provider.connection.confirmTransaction(tx);
+    if (conf.value.err) return null;
     return {
       success: true,
       signature: tx,
@@ -36,15 +34,13 @@ export const TopUpEscrowSession = async (
   amount: number,
 ) => {
   const program = Contarct(wallet);
-
   try {
     const tx = await program.methods
       .topUpEscrow(id, new BN(amount * LAMPORTS_PER_SOL))
-      .accounts({
-        user: wallet.publicKey,
-        admin: getAdminPublicKey(),
-      })
+      .accounts({ user: wallet.publicKey, admin: getAdminPublicKey() })
       .rpc();
+    const conf = await program.provider.connection.confirmTransaction(tx);
+    if (conf.value.err) return null;
     return {
       success: true,
       signature: tx,
@@ -62,7 +58,6 @@ export const FinalizeRentalWithEscrow = async (
   amount: number,
 ) => {
   const program = Contarct(wallet);
-
   try {
     const tx = await program.methods
       .finaliseRentalWithEscrow(
@@ -70,11 +65,10 @@ export const FinalizeRentalWithEscrow = async (
         new BN(amount * LAMPORTS_PER_SOL),
         SECRET_KEY,
       )
-      .accounts({
-        user: wallet.publicKey,
-        admin: getAdminPublicKey(),
-      })
+      .accounts({ user: wallet.publicKey, admin: getAdminPublicKey() })
       .rpc();
+    const conf = await program.provider.connection.confirmTransaction(tx);
+    if (conf.value.err) return null;
     return {
       success: true,
       signature: tx,

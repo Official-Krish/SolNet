@@ -12,6 +12,7 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { Toaster } from "sonner";
 import { Appbar } from "./components/Appbar.tsx";
 import { BrowserRouter } from "react-router-dom";
+import "./lib/api";
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider defaultTheme="dark">

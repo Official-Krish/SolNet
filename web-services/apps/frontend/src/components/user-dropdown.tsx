@@ -2,7 +2,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IconUser,
-  IconBell,
   IconDeviceDesktopAnalytics,
   IconCreditCard,
   IconCoins,

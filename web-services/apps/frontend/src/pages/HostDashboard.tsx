@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { type Machine } from "../../types/depinMachines";
 import axios from "axios";
-import { DEPIN_WORKER } from "@/config";
+import { BACKEND_URL } from "@/config";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useNavigate, Link } from "react-router-dom";
 import { DashboardTable } from "@/components/DepinHostDashboard/Table";
@@ -47,7 +47,7 @@ export function HostDashboard() {
     if (!wallet.publicKey) return;
     axios
       .get(
-        `${DEPIN_WORKER}/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
+        `${BACKEND_URL}/user/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
         {
           headers: { Authorization: `${localStorage.getItem("token")}` },
         },

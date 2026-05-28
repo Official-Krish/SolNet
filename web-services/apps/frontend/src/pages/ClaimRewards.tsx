@@ -3,26 +3,39 @@ import { motion, useInView } from "motion/react";
 import { useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { Link } from "react-router-dom";
 import { type Machine } from "../../types/depinMachines";
-import { DEPIN_WORKER } from "@/config";
+import { BACKEND_URL } from "@/config";
 import { claimSolana } from "@/lib/depin";
 import { toast } from "sonner";
 import axios from "axios";
+import { useTxConfirm } from "@/lib/useTxConfirm";
+
+// per-machine claim status
+type ClaimStatus = "idle" | "submitted" | "confirmed" | "failed";
 
 function MachineRow({
   m,
   i,
   onClaim,
-  claiming,
+  claimStatus,
 }: {
   m: Machine;
   i: number;
   onClaim: (id: string) => void;
-  claiming: string | null;
+  claimStatus: ClaimStatus;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-20px" });
-  const isClaiming = claiming === m.id;
   const hasFunds = m.claimedSOL > 0;
+  const busy = claimStatus === "submitted";
+
+  const label =
+    claimStatus === "submitted"
+      ? "confirming…"
+      : claimStatus === "confirmed"
+        ? "confirmed ✓"
+        : claimStatus === "failed"
+          ? "failed ✗"
+          : "Claim →";
 
   return (
     <motion.div
@@ -47,7 +60,6 @@ function MachineRow({
           </p>
         </div>
       </div>
-
       <div className="flex items-center gap-8">
         <span
           className={`text-sm font-mono tabular-nums ${hasFunds ? "text-emerald-500" : "text-zinc-400 dark:text-zinc-600"}`}
@@ -55,23 +67,27 @@ function MachineRow({
           {m.claimedSOL.toFixed(4)} SOL
         </span>
         <button
-          disabled={!hasFunds || isClaiming}
+          disabled={!hasFunds || busy}
           onClick={() => onClaim(m.id)}
           className={`text-xs transition-colors duration-200 ${
-            hasFunds && !isClaiming
-              ? "text-zinc-900 dark:text-white hover:text-[#9945FF]"
-              : "text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
+            claimStatus === "confirmed"
+              ? "text-emerald-500"
+              : claimStatus === "failed"
+                ? "text-red-500"
+                : hasFunds && !busy
+                  ? "text-zinc-900 dark:text-white hover:text-[#9945FF]"
+                  : "text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
           }`}
         >
-          {isClaiming ? (
+          {busy ? (
             <motion.span
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ repeat: Infinity, duration: 1 }}
             >
-              claiming…
+              {label}
             </motion.span>
           ) : (
-            "Claim →"
+            label
           )}
         </button>
       </div>
@@ -82,39 +98,58 @@ function MachineRow({
 export default function ClaimRewards() {
   const wallet = useWallet();
   const anchorWallet = useAnchorWallet();
+  const { watch } = useTxConfirm(wallet.publicKey?.toBase58());
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
-  const [claiming, setClaiming] = useState<string | null>(null);
+  // per-machine claim status
+  const [claimStatuses, setClaimStatuses] = useState<
+    Record<string, ClaimStatus>
+  >({});
 
   useEffect(() => {
     if (!wallet.publicKey) return;
     axios
       .get(
-        `${DEPIN_WORKER}/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
-        {
-          headers: { Authorization: `${localStorage.getItem("token")}` },
-        },
+        `${BACKEND_URL}/user/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
+        { headers: { Authorization: `${localStorage.getItem("token")}` } },
       )
       .then((r) => setMachines(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [wallet.publicKey]);
 
+  const setStatus = (id: string, s: ClaimStatus) =>
+    setClaimStatuses((p) => ({ ...p, [id]: s }));
+
   const handleClaim = async (id: string) => {
     if (!anchorWallet) return;
-    setClaiming(id);
+    setStatus(id, "submitted");
     try {
       const r = await claimSolana(anchorWallet, id);
-      if (r?.success) {
-        toast.success(`Claimed · ${r.signature.slice(0, 8)}…`);
-        setMachines((prev) =>
-          prev.map((m) => (m.id === id ? { ...m, claimedSOL: 0 } : m)),
-        );
+      if (!r?.success || !r.signature) {
+        setStatus(id, "failed");
+        toast.error("Claim failed");
+        return;
       }
+      watch(r.signature, {
+        onConfirmed: () => {
+          setStatus(id, "confirmed");
+          toast.success(`Claimed · ${r.signature.slice(0, 8)}…`);
+          setMachines((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, claimedSOL: 0 } : m)),
+          );
+          setTimeout(() => setStatus(id, "idle"), 3000);
+        },
+        onFailed: () => {
+          setStatus(id, "failed");
+          toast.error("Claim transaction failed on-chain");
+          setTimeout(() => setStatus(id, "idle"), 3000);
+        },
+      });
     } catch (e: unknown) {
+      setStatus(id, "failed");
       toast.error(e instanceof Error ? e.message : "Claim failed");
-    } finally {
-      setClaiming(null);
+      setTimeout(() => setStatus(id, "idle"), 3000);
     }
   };
 
@@ -223,7 +258,7 @@ export default function ClaimRewards() {
                 m={m}
                 i={i}
                 onClaim={handleClaim}
-                claiming={claiming}
+                claimStatus={claimStatuses[m.id] ?? "idle"}
               />
             ))
           )}

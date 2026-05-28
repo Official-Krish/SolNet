@@ -19,7 +19,6 @@ const linkGroups = [
       { name: "Dashboard", href: "/dashboard" },
       { name: "Rent vm", href: "/rent" },
       { name: "Depin hosting", href: "/hosting" },
-      { name: "Pricing", href: "/pricing" },
     ],
   },
   {
@@ -198,7 +197,7 @@ export function SiteFooter({
 
         <div className="mt-8 py-5 border-t border-[rgba(255,255,255,0.06)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-[12px] text-[rgba(255,255,255,0.25)]">
-            <span>© 2025 Axion</span>
+            <span>© 2026 Axion</span>
             <span className="text-[rgba(255,255,255,0.12)]">·</span>
             <span>All rights reserved</span>
             <span className="text-[rgba(255,255,255,0.12)]">·</span>

@@ -1,19 +1,17 @@
 import { clusterApiUrl, Connection } from "@solana/web3.js";
-import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
+import { AnchorProvider, Program, Wallet, type Idl } from "@coral-xyz/anchor";
 import idl from "../../idl/contract.json";
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { getAdminPublicKey, SECRET_KEY } from "@/config";
 
-// const network = clusterApiUrl('devnet');
-
 export function Contarct(wallet: AnchorWallet): Program {
   if (!wallet) {
     throw new Error("Wallet not connected");
   }
   const connection = new Connection(clusterApiUrl("devnet"));
-  const provider = new AnchorProvider(connection, wallet, {});
+  const provider = new AnchorProvider(connection, wallet as Wallet, {});
 
   const program = new Program(idl as Idl, provider);
 
@@ -82,14 +80,15 @@ export const FundVaultAccount = async (
         admin: wallet.publicKey,
       })
       .rpc();
-    const vaultAccountBalance =
-      await program.provider.connection.getBalance(vaultAccount);
+    // Fix: confirm BEFORE reading balance so we get the post-tx state
     const transaction =
       await program.provider.connection.confirmTransaction(tx);
     if (transaction.value.err) {
       console.error("Transaction failed", transaction.value.err);
       return null;
     }
+    const vaultAccountBalance =
+      await program.provider.connection.getBalance(vaultAccount);
     return {
       success: true,
       signature: tx,

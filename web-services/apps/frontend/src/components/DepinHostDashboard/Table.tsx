@@ -20,7 +20,7 @@ import { motion } from "framer-motion";
 import { Badge } from "../ui/badge";
 import { toast } from "sonner";
 import axios from "axios";
-import { DEPIN_WORKER } from "@/config";
+import { BACKEND_URL } from "@/config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -38,6 +38,7 @@ import { claimSolana, getEarnedSOL } from "@/lib/depin";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { CodeBlock } from "../DepinHosting/CodeBlock";
 import { onboardingScript } from "../DepinHosting/constants/scripts";
+import { useTxConfirm } from "@/lib/useTxConfirm";
 
 export const DashboardTable = ({
   machines,
@@ -47,6 +48,7 @@ export const DashboardTable = ({
   setMachines: (machines: Machine[]) => void;
 }) => {
   const wallet = useAnchorWallet();
+  const { watch } = useTxConfirm(wallet?.publicKey?.toBase58());
   const navigate = useNavigate();
   const [key, setKey] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,6 +56,7 @@ export const DashboardTable = ({
     id: string;
     isActive: boolean;
   } | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
   const getStatusColor = (status: boolean) => {
     switch (status) {
       case true:
@@ -92,7 +95,7 @@ export const DashboardTable = ({
     }
     try {
       const res = await axios.post(
-        `${DEPIN_WORKER}/depin/changeVisibility`,
+        `${BACKEND_URL}/user/depin/changeVisibility`,
         {
           id: machineId,
           pubKey: wallet?.publicKey?.toBase58(),
@@ -125,40 +128,54 @@ export const DashboardTable = ({
   };
 
   const handleClaimSOL = async (machineId: string) => {
+    if (!wallet?.publicKey) return;
+    setClaimingId(machineId);
     try {
-      if (!wallet?.publicKey) return;
       const amount = await getEarnedSOL(machineId, wallet.publicKey, wallet);
       const txn = await claimSolana(wallet!, machineId);
-      if (!txn) {
+      if (!txn?.success || !txn.signature) {
         toast.error("Failed to claim SOL. Please try again.");
+        setClaimingId(null);
         return;
       }
-      const res = await axios.post(
-        `${DEPIN_WORKER}/depin/claimSol`,
-        {
-          id: machineId,
-          pubKey: wallet?.publicKey?.toBase58(),
-          amount: amount,
-          Key: key,
+      watch(txn.signature, {
+        onConfirmed: async () => {
+          try {
+            const res = await axios.post(
+              `${BACKEND_URL}/user/depin/claimSOL`,
+              {
+                id: machineId,
+                pubKey: wallet?.publicKey?.toBase58(),
+                amount,
+                Key: key,
+              },
+              {
+                headers: { Authorization: `${localStorage.getItem("token")}` },
+              },
+            );
+            if (res.status === 200) {
+              toast.success("SOL claimed successfully");
+              setMachines(
+                machines.map((m) =>
+                  m.id === machineId
+                    ? { ...m, claimedSOL: m.claimedSOL + 1 }
+                    : m,
+                ),
+              );
+            }
+          } catch {
+            toast.error("Claim confirmed on-chain but backend update failed.");
+          }
+          setClaimingId(null);
         },
-        {
-          headers: {
-            Authorization: `${localStorage.getItem("token")}`,
-          },
+        onFailed: () => {
+          toast.error("Claim transaction failed on-chain.");
+          setClaimingId(null);
         },
-      );
-      if (res.status === 200) {
-        toast.success("SOL claimed successfully");
-        const updatedMachines = machines.map((machine) =>
-          machine.id === machineId
-            ? { ...machine, claimedSOL: machine.claimedSOL + 1 }
-            : machine,
-        );
-        setMachines(updatedMachines);
-      }
-    } catch (error) {
-      console.error("Error claiming SOL:", error);
+      });
+    } catch {
       toast.error("Failed to claim SOL. Please try again.");
+      setClaimingId(null);
     }
   };
   return (
@@ -266,11 +283,10 @@ export const DashboardTable = ({
                   <TableCell className="text-right">
                     <Button
                       className="bg-emerald-500 text-white hover:bg-emerald-600 transition cursor-pointer"
-                      onClick={() => {
-                        handleClaimSOL(machine.id);
-                      }}
+                      disabled={claimingId === machine.id}
+                      onClick={() => handleClaimSOL(machine.id)}
                     >
-                      Claim SOL
+                      {claimingId === machine.id ? "Confirming…" : "Claim SOL"}
                     </Button>
                   </TableCell>
                 </motion.tr>

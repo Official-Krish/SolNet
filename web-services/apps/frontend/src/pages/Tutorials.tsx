@@ -33,7 +33,7 @@ const TUTORIALS = [
     tag: "Intermediate",
     title: "Deploy a Docker image",
     desc: "Push a container to the DePIN network. Covers image selection, port mapping, and environment variables.",
-    href: "/depin/deploy",
+    href: "/docker/deploy",
   },
   {
     n: "05",

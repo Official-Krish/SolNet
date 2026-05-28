@@ -1,46 +1,234 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { Step1 } from "@/components/DepinHosting/Step1";
+import { Step1, type Step1FormData } from "@/components/DepinHosting/Step1";
 import { Step2 } from "@/components/DepinHosting/Step2";
 import { Step3 } from "@/components/DepinHosting/Step3";
 import axios from "axios";
-import { DEPIN_WORKER } from "@/config";
-import { useNavigate, Link } from "react-router-dom";
+import { BACKEND_URL } from "@/config";
+import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { IconCheck, IconCoins } from "@tabler/icons-react";
+import { IconCheck, IconCoins, IconTrendingUp } from "@tabler/icons-react";
 
+/* ── constants ──────────────────────────────────────────────────────── */
 const STEP_LABELS = ["Machine Details", "Verification", "Activation"];
+const SOL_PRICE = 150;
 
+/* ── earnings calc (spec formula) ──────────────────────────────────── */
+function calcEarnings(cpu: number, ram: number, disk: number) {
+  return (cpu * 0.005 + ram * 0.001 + disk * 0.0001) * 720;
+}
+
+/* ── Sparkline ──────────────────────────────────────────────────────── */
+function Sparkline() {
+  const bars = [3, 5, 4, 6, 5, 7, 6];
+  return (
+    <div className="flex items-end gap-0.5 h-4">
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm"
+          style={{
+            height: `${(h / 7) * 100}%`,
+            background: "rgba(99,102,241,0.4)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── Earnings sidebar ───────────────────────────────────────────────── */
+function EarningsSidebar({
+  cpu,
+  ram,
+  disk,
+}: {
+  cpu: number;
+  ram: number;
+  disk: number;
+}) {
+  const sol = useMemo(() => calcEarnings(cpu, ram, disk), [cpu, ram, disk]);
+  const usd = (sol * SOL_PRICE).toFixed(0);
+
+  // Show range when at minimum values
+  const isMinimal = cpu <= 1 && ram <= 2 && disk <= 10;
+  const displaySol = isMinimal ? "~0.45–1.2 SOL" : `~${sol.toFixed(2)} SOL`;
+
+  return (
+    <div
+      className="sticky top-6 rounded-[14px] p-5 space-y-4"
+      style={{
+        background: "#0F0F1C",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2.5">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(56,189,248,0.15))",
+          }}
+        >
+          <IconCoins size={18} color="#6366F1" />
+        </div>
+        <p className="text-sm font-medium text-white">Estimated Earnings</p>
+      </div>
+
+      {/* Hero number */}
+      <div>
+        <p
+          className="text-[32px] font-semibold leading-none"
+          style={{
+            background: "linear-gradient(135deg, #6366F1, #38BDF8)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          {displaySol}
+        </p>
+        <p className="text-xs text-white/40 mt-1">per month</p>
+        {!isMinimal && (
+          <p className="text-[13px] text-white/55 mt-1">
+            ≈ ${usd} at today's price
+          </p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-white/[0.06]" />
+
+      {/* Breakdown */}
+      <div className="space-y-2">
+        {[
+          { label: "CPU", val: (cpu * 0.005 * 720).toFixed(2) },
+          { label: "RAM", val: (ram * 0.001 * 720).toFixed(2) },
+          { label: "Storage", val: (disk * 0.0001 * 720).toFixed(2) },
+        ].map((row) => (
+          <div key={row.label} className="flex justify-between">
+            <span className="text-xs text-white/40">{row.label}</span>
+            <span className="text-xs text-white/75 font-mono">
+              +{row.val} SOL
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-white/[0.06]" />
+
+      {/* Disclaimer */}
+      <p className="text-[11px] text-white/30 italic leading-relaxed">
+        Estimates based on current network demand. Actual earnings may vary.
+      </p>
+
+      {/* Network demand sparkline */}
+      <div className="space-y-1.5">
+        <Sparkline />
+        <div className="flex items-center gap-1.5">
+          <IconTrendingUp size={11} color="#22C55E" />
+          <span className="text-[11px] text-emerald-500">
+            High demand · good time to join
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Stepper ────────────────────────────────────────────────────────── */
+function Stepper({ current }: { current: number }) {
+  return (
+    <div className="flex items-center mb-10">
+      {STEP_LABELS.map((label, i) => {
+        const n = i + 1;
+        const done = current > n;
+        const active = current === n;
+        return (
+          <div key={label} className="flex items-center">
+            {/* Circle */}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 transition-all duration-300"
+                style={
+                  done
+                    ? {
+                        background: "linear-gradient(135deg, #6366F1, #38BDF8)",
+                        color: "#fff",
+                      }
+                    : active
+                      ? {
+                          background:
+                            "linear-gradient(135deg, #6366F1, #38BDF8)",
+                          color: "#fff",
+                          boxShadow: "0 0 0 4px rgba(99,102,241,0.2)",
+                        }
+                      : {
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          color: "rgba(255,255,255,0.3)",
+                        }
+                }
+              >
+                {done ? <IconCheck size={14} /> : n}
+              </div>
+              <span
+                className="text-sm font-medium whitespace-nowrap"
+                style={{
+                  color: active
+                    ? "#fff"
+                    : done
+                      ? "#fff"
+                      : "rgba(255,255,255,0.3)",
+                }}
+              >
+                {label}
+              </span>
+            </div>
+            {/* Connector — constrained width, not full-bleed */}
+            {i < STEP_LABELS.length - 1 && (
+              <div
+                className="mx-4 h-px rounded-full flex-shrink-0"
+                style={{
+                  width: 48,
+                  background: done
+                    ? "linear-gradient(90deg, #6366F1, #38BDF8)"
+                    : "rgba(255,255,255,0.08)",
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────────────────── */
 export function HostRegister() {
   const wallet = useWallet();
-  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [id, setId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Step1FormData>({
     machineType: "",
     ipAddress: "",
-    cpu: 0,
-    ram: 0,
-    diskSize: 0,
+    cpu: 1,
+    ram: 2,
+    diskSize: 10,
     region: "",
     os: "",
     Key: "",
   });
 
-  const estimatedEarnings = useMemo(() => {
-    const cpuScore = formData.cpu * 0.15;
-    const ramScore = formData.ram * 0.04;
-    const storageScore = formData.diskSize * 0.002;
-    return Math.max(0, cpuScore + ramScore + storageScore).toFixed(2);
-  }, [formData.cpu, formData.ram, formData.diskSize]);
-
   const handleStep1Submit = async () => {
     setIsLoading(true);
     try {
       const res = await axios.post(
-        `${DEPIN_WORKER}/depin/register`,
+        `${BACKEND_URL}/user/depin/register`,
         { ...formData, userPublicKey: wallet.publicKey?.toBase58() },
         { headers: { Authorization: `${localStorage.getItem("token")}` } },
       );
@@ -63,9 +251,12 @@ export function HostRegister() {
         setIsLoading(false);
         return;
       }
-      const res = await axios.get(`${DEPIN_WORKER}/depin/getById?id=${id}`, {
-        headers: { Authorization: `${localStorage.getItem("token")}` },
-      });
+      const res = await axios.get(
+        `${BACKEND_URL}/user/depin/getById?id=${id}`,
+        {
+          headers: { Authorization: `${localStorage.getItem("token")}` },
+        },
+      );
       if (res.data.verified) {
         toast.success("Machine verified!");
         setCurrentStep(3);
@@ -80,18 +271,21 @@ export function HostRegister() {
 
   if (!wallet.publicKey || !localStorage.getItem("token")) {
     return (
-      <div className="min-h-screen bg-[#0D0D12] flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "#080810" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <p className="text-zinc-500 text-sm mb-4">
+          <p className="text-white/40 text-sm mb-4">
             Connect your wallet to register a machine
           </p>
           <Link
             to="/signin"
-            className="text-sm text-white hover:text-[#9945FF] transition-colors"
+            className="text-sm text-white hover:text-[#6366F1] transition-colors"
           >
             Sign in →
           </Link>
@@ -101,116 +295,100 @@ export function HostRegister() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D12] pt-28 pb-40 px-6 overflow-hidden">
+    <div
+      className="min-h-screen pt-24 pb-32 px-6"
+      style={{ background: "#080810" }}
+    >
+      {/* Subtle radial glow */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 40% 30% at 50% 10%, rgba(153,69,255,0.08), transparent 70%)",
+            "radial-gradient(ellipse 50% 35% at 50% 8%, rgba(99,102,241,0.09), transparent 70%)",
         }}
       />
 
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-10">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 mb-6"
-          >
-            <span className="h-px w-6 bg-[#9945FF]/60" />
-            <span className="text-[11px] tracking-[0.22em] uppercase text-zinc-500">
-              Register Node
+      <div className="relative max-w-[1180px] mx-auto">
+        {/* ── Page header ─────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <div
+              className="h-px w-5 rounded-full"
+              style={{ background: "linear-gradient(90deg, #6366F1, #38BDF8)" }}
+            />
+            <span
+              className="text-[11px] font-medium tracking-[0.18em] uppercase"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              Register node
             </span>
-            {currentStep > 1 && (
-              <button
-                onClick={() => navigate("/host")}
-                className="ml-auto text-xs text-zinc-600 hover:text-white transition-colors"
-              >
-                ← Back
-              </button>
-            )}
-          </motion.div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+          </div>
+          <h1 className="text-[32px] font-semibold text-white leading-tight">
             Add your machine to the network
           </h1>
-          <p className="text-zinc-400 text-sm mt-2 max-w-xl">
+          <p
+            className="text-sm mt-2 leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.45)" }}
+          >
             Register your hardware, run a quick verification, and start earning
-            SOL by sharing your compute power.
+            SOL.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Stepper */}
+        {/* ── Stepper ─────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center gap-0 mb-10"
+          transition={{ delay: 0.15 }}
         >
-          {STEP_LABELS.map((label, i) => {
-            const n = i + 1;
-            const done = currentStep > n;
-            const active = currentStep === n;
-            return (
-              <div
-                key={label}
-                className="flex items-center flex-1 last:flex-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                      done
-                        ? "bg-[#14F195] text-[#0D0D12]"
-                        : active
-                          ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] text-white shadow-lg shadow-violet-500/20"
-                          : "bg-zinc-800 text-zinc-500"
-                    }`}
-                  >
-                    {done ? <IconCheck className="w-4 h-4" /> : n}
-                  </div>
-                  <span
-                    className={`text-xs font-medium whitespace-nowrap ${
-                      active
-                        ? "text-white"
-                        : done
-                          ? "text-[#14F195]"
-                          : "text-zinc-500"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </div>
-                {i < STEP_LABELS.length - 1 && (
-                  <div
-                    className={`flex-1 h-0.5 mx-4 rounded-full transition-colors duration-300 ${
-                      done ? "bg-[#14F195]" : "bg-zinc-800"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
+          <Stepper current={currentStep} />
         </motion.div>
 
-        {/* Content + Earnings sidebar */}
-        <div className="flex flex-col lg:flex-row gap-8">
+        {/* ── Two-column layout ────────────────────────────────────── */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left — form (62%) */}
           <div className="flex-1 min-w-0">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.28 }}
               >
                 {currentStep === 1 && (
-                  <Step1
-                    formData={formData}
-                    setFormData={setFormData}
-                    isLoading={isLoading}
-                    handleStep1Submit={handleStep1Submit}
-                    estimatedEarnings={estimatedEarnings}
-                  />
+                  <>
+                    <Step1
+                      formData={formData}
+                      setFormData={setFormData}
+                      isLoading={isLoading}
+                      handleStep1Submit={handleStep1Submit}
+                    />
+                    {/* Save as draft */}
+                    <p className="text-center mt-3">
+                      <button
+                        type="button"
+                        className="text-[13px] transition-colors"
+                        style={{ color: "rgba(255,255,255,0.35)" }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.color =
+                            "rgba(255,255,255,0.6)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.color =
+                            "rgba(255,255,255,0.35)")
+                        }
+                        onClick={() => toast.info("Draft saved.")}
+                      >
+                        Save as draft
+                      </button>
+                    </p>
+                  </>
                 )}
                 {currentStep === 2 && (
                   <Step2
@@ -223,61 +401,19 @@ export function HostRegister() {
             </AnimatePresence>
           </div>
 
-          {/* Earnings preview sidebar */}
+          {/* Right — sticky sidebar (35%) */}
           {currentStep === 1 && (
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className="w-full lg:w-72 shrink-0"
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="w-full lg:w-[320px] shrink-0"
             >
-              <div className="sticky top-32 bg-[#1A1A24] border border-white/[0.07] rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <IconCoins className="w-4 h-4 text-[#14F195]" />
-                  <span className="text-sm font-semibold text-white">
-                    Estimated Earnings
-                  </span>
-                </div>
-                <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9945FF] to-[#14F195]">
-                  ~{estimatedEarnings}
-                  <span className="text-lg font-medium text-zinc-400 ml-1">
-                    SOL
-                  </span>
-                </div>
-                <p className="text-zinc-500 text-xs mt-1">per month</p>
-                <div className="mt-4 space-y-2 border-t border-white/[0.06] pt-4">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">
-                      CPU ({formData.cpu || "—"} cores)
-                    </span>
-                    <span className="text-zinc-300">
-                      +{((formData.cpu || 0) * 0.15).toFixed(2)} SOL
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">
-                      RAM ({formData.ram || "—"} GB)
-                    </span>
-                    <span className="text-zinc-300">
-                      +{((formData.ram || 0) * 0.04).toFixed(2)} SOL
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">
-                      Storage ({formData.diskSize || "—"} GB)
-                    </span>
-                    <span className="text-zinc-300">
-                      +{((formData.diskSize || 0) * 0.002).toFixed(2)} SOL
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 rounded-lg bg-violet-500/5 border border-violet-500/10">
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    Rates are estimates based on current network demand. Actual
-                    earnings may vary.
-                  </p>
-                </div>
-              </div>
+              <EarningsSidebar
+                cpu={formData.cpu}
+                ram={formData.ram}
+                disk={formData.diskSize}
+              />
             </motion.div>
           )}
         </div>

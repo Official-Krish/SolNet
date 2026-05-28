@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useParams, Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import axios from "axios";
-import { DEPIN_WORKER } from "@/config";
+import { BACKEND_URL } from "@/config";
 import { type Machine } from "../../types/depinMachines";
 
 function StatRow({
@@ -39,7 +39,7 @@ export function HostMachineDetails() {
     if (!wallet.publicKey) return;
     axios
       .get(
-        `${DEPIN_WORKER}/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
+        `${BACKEND_URL}/user/depin/getAll?userPublicKey=${wallet.publicKey.toBase58()}`,
         {
           headers: { Authorization: `${localStorage.getItem("token")}` },
         },

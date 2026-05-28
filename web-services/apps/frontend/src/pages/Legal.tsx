@@ -80,7 +80,7 @@ export function Privacy() {
     <LegalPage
       title="Privacy Policy"
       tag="Legal"
-      date="May 2025"
+      date="May 2026"
       sections={[
         {
           heading: "Information we collect",
@@ -116,7 +116,7 @@ export function Terms() {
     <LegalPage
       title="Terms of Service"
       tag="Legal"
-      date="May 2025"
+      date="May 2026"
       sections={[
         {
           heading: "Acceptance",
@@ -156,7 +156,7 @@ export function Cookies() {
     <LegalPage
       title="Cookie Policy"
       tag="Legal"
-      date="May 2025"
+      date="May 2026"
       sections={[
         {
           heading: "What are cookies",
@@ -188,7 +188,7 @@ export function GDPR() {
     <LegalPage
       title="GDPR"
       tag="Legal · EU"
-      date="May 2025"
+      date="May 2026"
       sections={[
         {
           heading: "Data controller",

@@ -15,7 +15,6 @@ import { HostRegister } from "./pages/HostMachine";
 import { HostDashboard } from "./pages/HostDashboard";
 import { DeployApp } from "./pages/deployImage";
 import { HostMachineDetails } from "./pages/HostMachineDetails";
-import Pricing from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import ApiReference from "./pages/ApiReference";
 import Tutorials from "./pages/Tutorials";
@@ -52,7 +51,7 @@ function App() {
         <Route path="/depin/machine/:id" element={<HostMachineDetails />} />
         <Route path="/depin/rewards" element={<ClaimRewards />} />
         <Route path="/host" element={<Host />} />
-        <Route path="/pricing" element={<Pricing />} />
+
         <Route path="/docs" element={<Docs />} />
         <Route path="/api" element={<ApiReference />} />
         <Route path="/tutorials" element={<Tutorials />} />

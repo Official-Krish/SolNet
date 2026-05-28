@@ -12,65 +12,86 @@ export interface IndexerEvent {
 
 type EventHandler = (event: IndexerEvent) => void;
 
+// ── Singleton WS state ────────────────────────────────────────────────
 let globalWs: WebSocket | null = null;
-const listeners: Set<EventHandler> = new Set();
+const listeners = new Set<EventHandler>();
+// All pubkeys that have been requested — re-subscribed on every (re)connect
+const subscribedPubkeys = new Set<string>();
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-let subscribedPubkey: string | null = null;
 
-function connect(pubkey?: string) {
+function sendSubscribe(pubkey: string) {
   if (globalWs?.readyState === WebSocket.OPEN) {
-    // Already connected, just subscribe if pubkey changed
-    if (pubkey && pubkey !== subscribedPubkey) {
-      subscribePubkey(pubkey);
-    }
+    globalWs.send(JSON.stringify({ type: "subscribe-indexer", pubkey }));
+  }
+}
+
+function connect() {
+  if (globalWs?.readyState === WebSocket.OPEN) {
+    return;
+  }
+  // If CONNECTING but we have pubkeys waiting, let it finish — onopen will subscribe them
+  if (globalWs?.readyState === WebSocket.CONNECTING) {
     return;
   }
 
   globalWs = new WebSocket(WS_RELAYER_URL);
 
   globalWs.onopen = () => {
-    if (pubkey) subscribePubkey(pubkey);
+    for (const pk of subscribedPubkeys) sendSubscribe(pk);
   };
 
   globalWs.onmessage = (msg) => {
     try {
-      const parsed = JSON.parse(msg.data);
+      const parsed = JSON.parse(msg.data as string);
       if (parsed.type === "indexer-event" && parsed.data) {
         listeners.forEach((fn) => fn(parsed.data));
+      } else {
+        console.warn("[ws-indexer] unknown message:", parsed);
       }
     } catch {
-      // ignore malformed messages
+      console.error("[ws-indexer] failed to parse message:", msg.data);
+      // ignore malformed
     }
   };
 
   globalWs.onclose = () => {
-    subscribedPubkey = null;
-    reconnectTimer = setTimeout(() => connect(pubkey), 3000);
+    globalWs = null;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 3000);
   };
 
-  globalWs.onerror = () => {
+  globalWs.onerror = (e) => {
+    console.error("[ws-indexer] error:", e);
     globalWs?.close();
   };
 }
 
-function subscribePubkey(pubkey: string) {
+function addPubkey(pubkey: string) {
+  subscribedPubkeys.add(pubkey);
   if (globalWs?.readyState === WebSocket.OPEN) {
-    globalWs.send(JSON.stringify({ type: "subscribe-indexer", pubkey }));
-    subscribedPubkey = pubkey;
+    sendSubscribe(pubkey);
+  } else if (globalWs?.readyState === WebSocket.CONNECTING) {
+    // onopen will subscribe all pubkeys in the set — nothing to do
+  } else {
+    connect();
   }
+}
+
+function removePubkey(pubkey: string) {
+  subscribedPubkeys.delete(pubkey);
 }
 
 function disconnect() {
   if (reconnectTimer) clearTimeout(reconnectTimer);
+  if (globalWs?.readyState === WebSocket.CONNECTING) {
+    return;
+  }
   globalWs?.close();
   globalWs = null;
-  subscribedPubkey = null;
+  subscribedPubkeys.clear();
 }
 
-/**
- * Hook to subscribe to real-time indexer events from the ws-relayer.
- * Pass `account` (user's wallet pubkey) to receive only relevant events.
- */
+// ── Hook ──────────────────────────────────────────────────────────────
 export function useIndexerEvents(opts?: {
   instruction?: string;
   account?: string;
@@ -81,7 +102,9 @@ export function useIndexerEvents(opts?: {
   onEventRef.current = opts?.onEvent;
 
   useEffect(() => {
-    connect(opts?.account);
+    // Don't connect until we have a pubkey to subscribe with
+    if (opts?.account) addPubkey(opts.account);
+    else return; // wallet not ready yet — effect will re-run when account arrives
 
     const handler: EventHandler = (event) => {
       if (opts?.instruction && event.instruction !== opts.instruction) return;
@@ -92,17 +115,17 @@ export function useIndexerEvents(opts?: {
     listeners.add(handler);
     return () => {
       listeners.delete(handler);
-      if (listeners.size === 0) disconnect();
+      if (opts?.account) {
+        removePubkey(opts.account);
+        if (listeners.size === 0 && subscribedPubkeys.size === 0) disconnect();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts?.instruction, opts?.account]);
 
   return lastEvent;
 }
 
-/**
- * Hook to listen for a specific transaction confirmation by VM id.
- * Returns "pending" | "confirmed" | "failed"
- */
 export function usePaymentConfirmation(
   vmId: string | null,
   expectedInstruction?: string,
@@ -115,8 +138,7 @@ export function usePaymentConfirmation(
     instruction: expectedInstruction,
     onEvent: (event) => {
       if (!vmId) return;
-      const eventId = event.args?.id;
-      if (eventId === vmId) {
+      if (event.args?.id === vmId) {
         setStatus(event.success ? "confirmed" : "failed");
       }
     },
