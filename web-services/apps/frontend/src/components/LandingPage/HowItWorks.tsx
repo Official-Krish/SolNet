@@ -50,7 +50,7 @@ const STEPS: {
     body: "VM boots in under 30 seconds. Connect via SSH or the browser terminal and ship.",
     isTerminal: true,
     detail: [
-      { k: "$", v: "ssh root@vm-7f2a.solnet.io", mono: true },
+      { k: "$", v: "ssh root@vm-7f2a.Axion.io", mono: true },
       { k: "→", v: "Connecting...", mono: true, muted: true },
       { k: "✓", v: "Ready", mono: true, accent: true },
     ],
@@ -74,7 +74,7 @@ function TerminalDetail({
         <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
         <span className="ml-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-500">
-          bash — root@solnet
+          bash — root@Axion
         </span>
       </div>
       <div className="space-y-2">

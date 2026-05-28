@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ["localhost", ".krishdev.xyz", ".axion.krishdev.xyz"],
+    allowedHosts: ["localhost", ".krishlabs.tech", ".axion.krishlabs.tech"],
   },
   optimizeDeps: {
     include: [

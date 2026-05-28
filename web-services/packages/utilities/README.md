@@ -1,15 +1,17 @@
-# utilities
+# `@decloud/utilities` — Shared Utilities
 
-To install dependencies:
+Common utilities shared across backend and worker apps.
 
-```bash
-bun install
+## Modules
+
+| File | Description |
+|------|-------------|
+| `authMiddleware.ts` | Express JWT auth middleware — verifies Bearer token, attaches user to `req`, returns 401 on expiry / 403 on invalid |
+| `redis.ts` | Redis connection singleton + BullMQ queue definitions (`vm-termination`, `initialise-host-pda`, `changeVMStatus`, `terminate-depin-vm`) |
+
+## Usage
+
+```ts
+import { authMiddleware } from "@decloud/utilities";
+import { redisConnection } from "@decloud/utilities/redis";
 ```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

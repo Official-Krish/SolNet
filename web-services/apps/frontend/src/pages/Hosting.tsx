@@ -14,7 +14,7 @@ const STEPS = [
     n: "02",
     title: "Run the verification script",
     desc: "One command installs the Axion node daemon and verifies your machine's resources on-chain.",
-    code: "curl -sSL https://assets.krishdev.xyz/DeCloud/verification_script.sh | bash",
+    code: "curl -sSL https://assets.krishlabs.tech/DeCloud/verification_script.sh | bash",
   },
   {
     n: "03",

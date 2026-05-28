@@ -1,15 +1,15 @@
-# types
+# `@decloud/types` — Shared TypeScript Types
 
-To install dependencies:
+Zod validation schemas and TypeScript types shared across apps. Centralizes API request/response shapes to ensure type safety between frontend and backend.
 
-```bash
-bun install
+## Contents
+
+- `index.ts` — Zod schemas for all API contracts
+- Re-exported as `@decloud/types` for workspace consumption
+
+## Usage
+
+```ts
+import { signinSchema } from "@decloud/types";
+const data = signinSchema.parse(req.body);
 ```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.4. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

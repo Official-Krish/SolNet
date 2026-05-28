@@ -12,17 +12,17 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - api.decloud.krishdev.xyz
+        - api.decloud.krishlabs.tech
       secretName: decloud-backend-tls
     - hosts:
-        - wss.decloud.krishdev.xyz
+        - wss.decloud.krishlabs.tech
       secretName: decloud-ws-relayer-tls
     - hosts:
-        - wss.depin.decloud.krishdev.xyz
+        - wss.depin.decloud.krishlabs.tech
       secretName: decloud-depin-ws-relayer-tls
 
   rules:
-    - host: decloud.krishdev.xyz
+    - host: decloud.krishlabs.tech
       http:
         paths:
           - path: /
@@ -33,7 +33,7 @@ spec:
                 port:
                   number: 80
 
-    - host: api.decloud.krishdev.xyz
+    - host: api.decloud.krishlabs.tech
       http:
         paths:
           - path: /
@@ -43,7 +43,7 @@ spec:
                 name: decloud-backend
                 port:
                   number: 80
-    - host: wss.decloud.krishdev.xyz
+    - host: wss.decloud.krishlabs.tech
       http:
         paths:
           - path: /
@@ -54,7 +54,7 @@ spec:
                 port:
                   number: 80
 
-    - host: wss.depin.decloud.krishdev.xyz
+    - host: wss.depin.decloud.krishlabs.tech
       http:
         paths:
           - path: /

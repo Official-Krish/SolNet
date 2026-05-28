@@ -60,7 +60,7 @@ function CodeBlock({ script }: { script: string }) {
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
           <span className="ml-2 text-[10px] font-mono text-white/30">
-            bash — root@solnet
+            bash — root@Axion
           </span>
         </div>
         <button

@@ -1,368 +1,789 @@
-# ☁️ SolNet - Decentralized Cloud Computing Platform
+# ☁️ Axion — Decentralized Cloud Computing Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solana](https://img.shields.io/badge/Powered%20by-Solana-purple.svg)](https://solana.com/)
 [![Anchor](https://img.shields.io/badge/Built%20with-Anchor-blue.svg)](https://www.anchor-lang.com/)
+[![Bun](https://img.shields.io/badge/Runtime-Bun-black.svg)](https://bun.sh/)
+[![Turbo](https://img.shields.io/badge/Monorepo-Turborepo-ef4444.svg)](https://turbo.build/)
 
-> **SolNet** is a revolutionary decentralized cloud computing platform that enables users to rent virtual machines using **SOL tokens** while providing DePIN (Decentralized Physical Infrastructure Network) services for host machines.
+Axion is a decentralized cloud computing platform where users rent virtual machines using **SOL tokens**. DePIN (Decentralized Physical Infrastructure Network) hosts earn SOL by sharing their compute resources. The platform combines Solana smart contracts, a Rust transaction indexer, Bun-based backend services, and a React frontend with real-time WebSocket updates.
 
-## 🚀 Overview
+---
 
-SolNet bridges the gap between traditional cloud computing and Web3 by offering:
+## Table of Contents
 
-- **Crypto-Native Payments**: Pay for cloud resources using SOL tokens
-- **DePIN Hosting**: Earn SOL by sharing your compute resources
-- **Instant Deployment**: Deploy VMs across AWS, GCP, or decentralized networks
-- **Smart Contract Escrow**: Secure, transparent payment handling
-- **Global Infrastructure**: Multi-region deployment with low latency
+- [Architecture Overview](#architecture-overview)
+- [System Architecture Diagram](#system-architecture-diagram)
+- [Transaction Flow](#transaction-flow)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [Database Schema](#database-schema)
+- [Smart Contracts](#smart-contracts)
+- [Indexer](#indexer)
+- [Deployment](#deployment)
+- [Local Development](#local-development)
+- [Testing](#testing)
+- [Roadmap](#roadmap)
+- [License](#license)
 
-## ✨ Key Features
+---
 
-### 🔐 Crypto-Native Experience
-- **No Credit Cards Required**: Pay directly with SOL tokens
-- **Instant Transactions**: No lengthy verification processes
-- **Transparent Pricing**: Real-time cost calculations
-- **Secure Escrow**: Smart contract-managed payments
+## Architecture Overview
 
-### 🌐 Multi-Provider Support
-- **AWS Integration**: Deploy on Amazon Web Services
-- **GCP Integration**: Deploy on Google Cloud Platform
-- **DePIN Network**: Access decentralized compute resources (Docker images only)
-- **Global Regions**: Deploy across multiple geographic locations
+The platform consists of five core layers:
 
-### 💻 Developer-Friendly
-- **SSH Terminal Access**: Direct command-line access to VMs
-- **Real-time Monitoring**: Track resource usage and costs
+### 1. Smart Contract Layer (Solana / Anchor)
+An Anchor program deployed on Solana devnet managing:
+- **VM Rentals** — escrow-based rental sessions with timed billing
+- **DePIN Hosting** — host registration, activation, reward claims, and penalties
+- **Admin Vault** — centralized SOL management with fund flow control
 
-### 🏗️ DePIN Hosting
-- **Host Registration**: Register your machines to earn SOL
-- **Docker Image Support**: Currently supports Docker container deployments
-- **Automated Verification**: Script-based machine validation
-- **Reward System**: Earn based on usage and uptime
-- **Dashboard Management**: Monitor your hosted resources
+16 instructions total (11 rental + 5 DePIN), each with Borsh-serialized arguments and CPI-safe account validation.
 
-## 🏗️ Architecture
+### 2. Transaction Indexer (Rust)
+A high-performance on-chain monitor that:
+- Subscribes to Solana logs via WebSocket (`logsSubscribe`) or Yellowstone gRPC
+- Parses Anchor instruction signatures and Borsh arguments from log strings
+- Pushes parsed events to both the backend API and the WebSocket relay simultaneously
 
-### Smart Contract Layer (Solana/Anchor)
-```rust
-// Core Functions
-- initialize_vault()           // Setup admin vault
-- transfer_to_vault_and_rent() // Start rental with escrow
-- transfer_from_vault()        // End session & settle payment
-- end_rental_session()        // Complete rental period
+### 3. Backend Services (Bun / Express)
+A RESTful API server handling:
+- **User authentication** — JWT-based signup/signin with wallet verification
+- **VM lifecycle** — create, read, terminate instances across GCP and DePIN providers
+- **DePIN management** — host registration, status, visibility, rewards
+- **Indexer ingestion** — webhook receiver for on-chain events
+- **Background jobs** — BullMQ queues for async VM provisioning and chain interactions
 
-// DePIN Functions
-- initialise_host_registration() // Register host machine
-- activate_host()              // Activate host for requests
-- claim_rewards()              // Claim earned SOL
-- penalize_host()              // Penalize misbehaving hosts
+### 4. WebSocket Relayers (Bun)
+Two real-time communication servers:
+- **ws-relayer** — broadcasts indexer events to frontend clients, proxies SSH terminal connections
+- **depin-ws-relayer** — manages DePIN host machine connections, dispatches Docker job containers
+
+### 5. Frontend Application (React / Vite)
+A single-page application providing:
+- Landing page with 3D globe visualization
+- Dashboard for VM and host management
+- Wallet-connected SOL payments
+- Browser-based SSH terminal (xterm.js)
+- Real-time updates via WebSocket subscriptions
+
+---
+
+## System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Blockchain["Solana Blockchain"]
+        SP[Solana Program<br/>J7nyNjMR...FvVjJ]
+        TX[Transactions]
+    end
+
+    subgraph Indexer["Transaction Indexer (Rust)"]
+        WS[WebSocket Mode<br/>logsSubscribe]
+        GRPC[gRPC Mode<br/>Yellowstone]
+        PARSER[Anchor Log Parser]
+        NOTIFIER[Webhook Dispatcher]
+    end
+
+    subgraph Backend["Backend (Bun / Express :3000)"]
+        API[REST API]
+        AUTH[JWT Auth Middleware]
+        BMQ[BullMQ Queues]
+        DB[(PostgreSQL)]
+        REDIS[(Redis)]
+    end
+
+    subgraph Workers["Background Workers (Bun)"]
+        WKR[VM Termination Worker]
+        HPDA[Host PDA Worker]
+    end
+
+    subgraph Relay["WebSocket Relays"]
+        WSR[ws-relayer :9093<br/>Indexer Events + SSH Proxy]
+        DPW[depin-ws-relayer :8080<br/>Host Communication]
+    end
+
+    subgraph Frontend["Frontend (React / Vite :5173)"]
+        UI[SPA]
+        WALLET[Solana Wallet]
+        TERM[SSH Terminal]
+    end
+
+    subgraph DePIN["DePIN Network"]
+        HOST1[Host Machine 1<br/>Docker]
+        HOST2[Host Machine 2<br/>Docker]
+        HOSTN[Host Machine N<br/>Docker]
+    end
+
+    subgraph Cloud["Cloud Providers"]
+        GCP[Google Cloud<br/>Compute Engine]
+    end
+
+    %% Blockchain → Indexer
+    SP -- "logsSubscribe WS" --> WS
+    SP -- "gRPC subscription" --> GRPC
+    WS --> PARSER
+    GRPC --> PARSER
+    PARSER --> NOTIFIER
+
+    %% Indexer → Backend & Relay
+    NOTIFIER -- "POST /api/v2/indexer/webhook" --> API
+    NOTIFIER -- "WebSocket message" --> WSR
+
+    %% Relay → Frontend
+    WSR -- "indexer-event" --> UI
+    WSR -- "SSH stream" --> TERM
+
+    %% Relay → DePIN
+    DPW -- "jobs (start/stop)" --> HOST1
+    DPW -- "jobs (start/stop)" --> HOST2
+    DPW -- "jobs (start/stop)" --> HOSTN
+    HOST1 -- "status updates" --> DPW
+    HOST2 -- "status updates" --> DPW
+    HOSTN -- "status updates" --> DPW
+
+    %% Frontend → Backend
+    UI -- "REST API" --> API
+    UI -- "SOL transactions" --> TX
+
+    %% Backend internals
+    API --> AUTH
+    API --> BMQ
+    BMQ --> REDIS
+    API --> DB
+    BMQ --> WKR
+    BMQ --> HPDA
+
+    %% Workers → Cloud
+    WKR -- "delete instance" --> GCP
+    HPDA -- "on-chain tx" --> TX
+
+    %% Workers → Smart Contract
+    WKR -- "endRentalSession" --> SP
+    HPDA -- "initialiseHostPDA" --> SP
+
+    %% DePIN → Frontend
+    DPW -- "status updates" --> UI
+
+    %% Wallet tx
+    WALLET -- "sign & send" --> TX
+    TX -- "execution" --> SP
 ```
 
-### Transaction Indexer
-- **Rust-based**: High-performance on-chain transaction monitoring
-- **Dual Mode**: WebSocket (default) or Yellowstone gRPC
-- **Real-time Parsing**: Identifies all contract instructions via Anchor log parsing
-- **Webhook Notifications**: Pushes events to backend and ws-relayer
+---
 
-### Backend Services
-- **API Gateway**: RESTful endpoints for VM management
-- **VM Provisioning**: Automated cloud resource allocation
-- **Session Tracking**: Real-time usage monitoring
-- **Payment Processing**: Smart contract integration
+## Transaction Flow
 
-### Frontend Application
-- **React + TypeScript**: Modern, responsive UI
-- **TailwindCSS**: Beautiful, consistent design
-- **Wallet Integration**: Solana wallet connectivity
-- **Real-time Updates**: WebSocket-based live data
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant Wallet as Solana Wallet
+    participant Chain as Solana Program
+    participant Indexer as Rust Indexer
+    participant Backend
+    participant Relay as ws-relayer
+    participant Worker
 
-## 📦 Project Structure
+    User->>Frontend: Click "Rent VM"
+    Frontend->>Wallet: Request SOL payment
+    Wallet->>Chain: Submit transaction
+    Chain->>Chain: Execute instruction
+    Chain-->>Indexer: Log emitted
+    Indexer->>Indexer: Parse Anchor log
+    Indexer->>Backend: POST /api/v2/indexer/webhook
+    Indexer->>Relay: WebSocket indexer-event
+    Relay->>Frontend: indexer-event (real-time)
+    Frontend->>Frontend: Update UI (confirmed)
+    Backend->>Worker: Enqueue BullMQ job
+    Worker->>Chain: On-chain verification
+    Worker->>GCP: Provision VM instance
+    Worker->>Backend: Update DB status
+    Backend-->>Frontend: VM ready
+```
+
+---
+
+## Project Structure
 
 ```
-SolNet/
-├── contract/                 # Solana smart contracts (Anchor)
+Axion/
+├── contract/                        # Solana Anchor smart contracts
 │   ├── programs/contract/
-│   │   ├── src/
-│   │   │   ├── instructions/ # VM rental instructions
-│   │   │   ├── depin/        # DePIN host management
-│   │   │   ├── state/        # Account state definitions
-│   │   │   └── lib.rs        # Main program entry
-│   │   └── Cargo.toml
-│   └── tests/               # Contract test suites
-├── indexer/                  # Rust transaction indexer
-│   ├── src/
-│   │   ├── main.rs          # Entry point (mode switching)
-│   │   ├── ws.rs            # WebSocket logsSubscribe mode
-│   │   ├── grpc.rs          # Yellowstone gRPC mode (optional)
-│   │   ├── parser.rs        # Anchor log → ParsedEvent
-│   │   ├── instructions.rs  # Contract instruction definitions
-│   │   ├── notifier.rs      # Webhook dispatcher
-│   │   └── config.rs        # Environment config
+│   │   └── src/
+│   │       ├── lib.rs              # Program entry: 16 instructions
+│   │       ├── constants.rs        # PDA seeds, constants
+│   │       ├── errors.rs           # Custom Anchor errors
+│   │       ├── state/              # Account state structs
+│   │       │   ├── vault_account.rs
+│   │       │   ├── rental_session.rs
+│   │       │   ├── escrow_session.rs
+│   │       │   └── host_machine_registration.rs
+│   │       ├── instructions/       # VM rental instructions (11)
+│   │       │   ├── initialize_vault.rs
+│   │       │   ├── transfer_to_vault_and_rent.rs
+│   │       │   ├── transfer_from_vault.rs
+│   │       │   ├── end_rental_session.rs
+│   │       │   ├── fund_vault.rs
+│   │       │   ├── withdraw_funds.rs
+│   │       │   ├── start_rental_with_escrow.rs
+│   │       │   ├── finalize_rental_escrow.rs
+│   │       │   ├── top_up_escrow.rs
+│   │       │   └── force_terminate_rental.rs
+│   │       └── depin/              # DePIN host instructions (5)
+│   │           ├── initialise_host_registration.rs
+│   │           ├── activate_host.rs
+│   │           ├── deactivate_host.rs
+│   │           ├── claim_rewards.rs
+│   │           └── penalize_host.rs
+│   ├── tests/
+│   │   ├── contract.ts            # Main test suite
+│   │   └── depin_test.ts          # DePIN-specific tests
+│   ├── Anchor.toml
 │   └── Cargo.toml
-├── web-services/            # Application services
+│
+├── indexer/                         # Rust transaction indexer
+│   └── src/
+│       ├── main.rs                 # Entry: mode switching
+│       ├── config.rs               # Env configuration
+│       ├── ws.rs                   # WebSocket logsSubscribe
+│       ├── grpc.rs                 # Yellowstone gRPC (optional)
+│       ├── parser.rs               # Anchor log → ParsedEvent
+│       ├── instructions.rs         # Instruction discriminators
+│       ├── args.rs                 # Borsh deserialization
+│       └── notifier.rs             # Webhook dispatcher
+│
+├── web-services/                    # Turborepo monorepo (Bun)
 │   ├── apps/
-│   │   ├── backend/         # Bun-based API server
-│   │   ├── frontend/        # React application
-│   │   ├── depin-worker/    # DePIN service worker
-│   │   └── ws-relayer/      # WebSocket relay service
+│   │   ├── backend/               # Express API server
+│   │   │   ├── index.ts           # App entry + middleware
+│   │   │   ├── routes/
+│   │   │   │   ├── user.ts        # Auth routes
+│   │   │   │   ├── vm.ts          # VM types & images
+│   │   │   │   ├── vmInstance.ts  # VM instance CRUD
+│   │   │   │   ├── depinVm.ts     # DePIN host management
+│   │   │   │   └── indexer.ts     # Indexer webhook
+│   │   │   └── utils/
+│   │   │       ├── calculatePrice.ts
+│   │   │       ├── createVm.ts
+│   │   │       ├── delteVm.ts
+│   │   │       └── middleware.ts
+│   │   │
+│   │   ├── frontend/              # React SPA (29 pages)
+│   │   │   └── src/
+│   │   │       ├── pages/         # Route pages
+│   │   │       ├── components/    # Reusable components
+│   │   │       │   ├── ui/        # shadcn primitives
+│   │   │       │   ├── LandingPage/
+│   │   │       │   ├── RentVm/
+│   │   │       │   ├── vmDetail/
+│   │   │       │   ├── DepinHostDashboard/
+│   │   │       │   └── DeployImage/
+│   │   │       └── lib/
+│   │   │           ├── contract.ts   # Anchor client
+│   │   │           ├── useTxConfirm.ts  # Indexer tx confirmation
+│   │   │           ├── useIndexerEvents.ts  # WS event hook
+│   │   │           ├── api.ts         # Axios client
+│   │   │           └── config.ts      # Env config
+│   │   │
+│   │   ├── worker/               # BullMQ background jobs
+│   │   │   ├── index.ts          # Queue consumers
+│   │   │   └── contract.ts       # Anchor client (server-side)
+│   │   │
+│   │   ├── ws-relayer/           # WebSocket relay + SSH proxy
+│   │   │   └── index.ts          # WS server (330 lines)
+│   │   │
+│   │   ├── depin-ws-relayer/     # DePIN host communication
+│   │   │   └── index.ts          # WS server (205 lines)
+│   │   │
+│   │   └── scripts/              # Host shell scripts
+│   │       ├── onboard.sh
+│   │       └── verification_script.sh
+│   │
 │   └── packages/
-│       ├── db/              # Database schema & migrations
-│       ├── types/           # Shared TypeScript types
-│       └── ui/              # Reusable UI components
-└── ops/                     # Kubernetes deployment configs
+│       ├── db/                   # Prisma ORM + PostgreSQL
+│       │   └── prisma/schema.prisma
+│       ├── types/                # Shared Zod schemas
+│       ├── ui/                   # Shared React components
+│       ├── utilities/            # Auth middleware, Redis
+│       ├── eslint-config/
+│       └── typescript-config/
+│
+├── ops/                           # Kubernetes manifests
+│   ├── deployment.yml
+│   ├── service.yml
+│   ├── ingress.yml
+│   ├── certificate.yml
+│   └── secrets.yml
+│
+└── docker/                        # Dockerfiles
+    ├── backend.dockerfile
+    ├── frontend.dockerfile
+    ├── worker.dockerfile
+    ├── ws-relayer.dockerfile
+    └── depin-ws-relayer.dockerfile
 ```
 
-## 🚀 Quick Start
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Blockchain** | Solana (devnet) |
+| **Smart Contracts** | Anchor Framework (Rust), Program ID: `J7nyNjMR7p9Xi8ohzkNAFmnAeVUBb1AMpGKTFGtFvVjJ` |
+| **Transaction Indexer** | Rust (tokio, solana-client 2.2, Yellowstone gRPC) |
+| **Monorepo Manager** | Turborepo 2.5 |
+| **Package Manager** | Bun 1.2 |
+| **Backend Runtime** | Bun (Express 5) |
+| **Database** | PostgreSQL 16 + Prisma 7 |
+| **Queue** | Redis 7 + BullMQ |
+| **Frontend** | React 19 + TypeScript + Vite 7 |
+| **Styling** | TailwindCSS 4 + shadcn/ui (Radix primitives) |
+| **Animations** | Framer Motion (motion) + Three.js (globe) |
+| **Terminal** | xterm.js + ssh2 (browser SSH) |
+| **Cloud Provider** | Google Cloud Compute Engine |
+| **Containerization** | Docker (multi-stage alpine) |
+| **Orchestration** | Kubernetes (nginx-ingress + cert-manager) |
+| **CI / Linting** | ESLint + Prettier + Husky |
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18+)
-- [Bun](https://bun.sh/) (for backend)
-- [Rust](https://rustup.rs/) (v1.88+, for indexer)
+
+- [Bun](https://bun.sh/) >= 1.2
+- [Rust](https://rustup.rs/) >= 1.88 (for indexer)
 - [Anchor CLI](https://www.anchor-lang.com/docs/installation)
 - [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
-- [PostgreSQL](https://www.postgresql.org/) database
+- PostgreSQL >= 16
+- Redis >= 7
 
-### 1. Smart Contract Deployment
+### 1. Smart Contract
 
 ```bash
-# Navigate to contract directory
 cd contract
-
-# Install dependencies
-cargo install
-
-# Build the program
 anchor build
-
-# Deploy to Solana devnet
-anchor deploy
+anchor deploy --provider.cluster devnet
+# Note the deployed program ID, update .env files
 ```
 
-### 2. Database Setup
+### 2. Database
 
 ```bash
-# Navigate to database package
 cd web-services/packages/db
-
-# Install dependencies
 bun install
-
-# Run migrations
 bunx prisma migrate dev
-
-# Generate Prisma client
 bunx prisma generate
 ```
 
-### 3. Backend Services
+### 3. Backend
 
 ```bash
-# Navigate to backend
 cd web-services/apps/backend
-
-# Install dependencies
 bun install
-
-# Set environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start development server
-bun dev
+cp .env.example .env     # Edit with your config
+bun dev                  # :3000
 ```
 
-### 4. Frontend Application
+### 4. Frontend
 
 ```bash
-# Navigate to frontend
 cd web-services/apps/frontend
-
-# Install dependencies
 bun install
-
-# Set environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start development server
-bun dev
+bun dev                  # :5173
 ```
 
-### 5. Transaction Indexer
+### 5. WebSocket Relayer
 
 ```bash
-# Navigate to indexer
+cd web-services/apps/ws-relayer
+bun install
+bun dev                  # :9093
+```
+
+### 6. DePIN WS Relayer
+
+```bash
+cd web-services/apps/depin-ws-relayer
+bun install
+bun dev                  # :8080
+```
+
+### 7. Worker
+
+```bash
+cd web-services/apps/worker
+bun install
+bun run index.ts
+```
+
+### 8. Transaction Indexer
+
+```bash
 cd indexer
-
-# Set environment variables
 cp .env.example .env
-# Edit .env with your configuration
-
-# Run in WebSocket mode (default, connects to devnet)
-RUST_LOG=info cargo run
-
-# Run with gRPC mode (requires Yellowstone endpoint)
+RUST_LOG=info cargo run  # WebSocket mode
+# or with gRPC:
 RUST_LOG=info cargo run --features grpc
 ```
 
-## 🔧 Configuration
+---
 
-### Environment Variables
+## Environment Variables
 
-#### Backend (.env)
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/SolNet"
-REDIS_URL="redis://localhost:6379"
-JWT_SECRET="your-jwt-secret"
-SOLANA_RPC_URL="https://api.devnet.solana.com"
-PROGRAM_ID="your-anchor-program-id"
-```
+### Backend
 
-#### Frontend (.env)
-```bash
-BACKEND_URL = "http://localhost:3000";
-SECRET_KEY = "your-secret-key";
-ADMIN_KEY = "your-admin-key";
-WS_RELAYER_URL = "ws://localhost:9093";
-DEPIN_WORKER = "http://localhost:6000";
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port |
+| `DATABASE_URL` | — | PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `JWT_SECRET` | — | JWT signing key |
+| `SOLANA_RPC_URL` | `http://localhost:8899` | Solana JSON-RPC |
+| `PROGRAM_ID` | — | Deployed Anchor program ID |
+| `PRIVATE_KEY` | — | Admin wallet private key (base58) |
+| `PROJECT_ID` | — | GCP project ID |
 
-#### Indexer (.env)
-```bash
-MODE="ws"                    # "ws" or "grpc"
-SOLANA_WS_URL="wss://api.devnet.solana.com"
-GRPC_ENDPOINT="http://127.0.0.1:10000"
-PROGRAM_ID="your-anchor-program-id"
-BACKEND_WEBHOOK_URL="http://localhost:3000/api/v2/indexer/webhook"
-WS_RELAYER_URL="ws://localhost:9093"
-```
+### Frontend
 
-## 📊 Database Schema
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_BACKEND_URL` | `http://localhost:3000` | Backend API URL |
+| `VITE_WS_RELAYER_URL` | `ws://localhost:9093` | WebSocket relay URL |
+| `VITE_SOLANA_RPC_URL` | `http://localhost:8899` | Solana RPC endpoint |
+| `VITE_PROGRAM_ID` | — | Anchor program ID |
 
-### Core Models
-- **User**: Wallet-based user accounts
-- **VMInstance**: Virtual machine instances
-- **VMConfig**: Machine configuration details
-- **DepinHostMachine**: DePIN host registrations
-- **VMImage**: Pre-configured Docker application images
+### Indexer
 
-### Key Relationships
-```sql
-User -> VMInstance (1:1)
-VMInstance -> VMConfig (1:1)
-VMInstance -> VMImage (1:1)
-User -> DepinHostMachine (1:many)
-DepinHostMachine -> VMImage (1:1)
-```
-
-## 🔌 API Endpoints
-
-### VM Management
-```http
-POST   /api/v2/vmInstance/create    # Create new VM instance
-GET    /api/v2/vmInstance/:id       # Get VM details
-PUT    /api/v2/vmInstance/:id       # Update VM configuration
-DELETE /api/v2/vmInstance/:id       # Terminate VM instance
-```
-
-### DePIN Services
-```http
-POST   /api/v2/user/depin/register  # Register host machine
-GET    /api/v2/user/depin/status    # Get host status
-POST   /api/v2/user/depin/activate  # Activate host machine
-```
-
-### User Management
-```http
-POST   /api/v2/user/signup          # User registration
-POST   /api/v2/user/signin          # User authentication
-GET    /api/v2/user/profile         # Get user profile
-```
-
-## 🧪 Testing
-
-### Smart Contract Tests
-```bash
-cd contract
-anchor test
-```
-
-## 🚀 Deployment
-
-
-### Kubernetes Deployment
-```bash
-# Apply Kubernetes manifests
-kubectl apply -f ops/
-
-# Check deployment status
-kubectl get pods -n SolNet
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Development Guidelines
-- Follow the existing code style and conventions
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting
-
-## 📈 Roadmap
-
-### v3.0 (Future)
-- 📋 AI-powered resource optimization
-- 📋 Cross-chain payment support
-- 📋 Decentralized storage integration
-- 📋 Advanced security features
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Smart Contract Deployment
-```bash
-# If deployment fails, check:
-anchor build --skip-lint
-anchor deploy --provider.cluster devnet --program-keypair target/deploy/contract-keypair.json
-```
-
-#### Database Connection
-```bash
-# Ensure PostgreSQL is running
-sudo systemctl start postgresql
-
-# Check connection
-psql -h localhost -U your_user -d SolNet
-```
-
-#### Frontend Build Issues
-```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-bun install
-```
-
-## 📞 Support
-
-- **Email**: Krishanand974@gmail.com
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Solana Foundation** for blockchain infrastructure
-- **Anchor Framework** for smart contract development
-- **TurboRepo** for monorepo management
-- **Google Cloud Platform** for cloud infrastructure
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODE` | `ws` | `ws` or `grpc` |
+| `SOLANA_WS_URL` | `wss://api.devnet.solana.com` | Solana WebSocket endpoint |
+| `SOLANA_HTTP_URL` | `https://api.devnet.solana.com` | Solana HTTP endpoint |
+| `PROGRAM_ID` | — | Program ID to monitor |
+| `BACKEND_WEBHOOK_URL` | — | Backend webhook URL |
+| `WS_RELAYER_URL` | — | ws-relayer URL |
 
 ---
+
+## API Reference
+
+### User Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v2/user/signup` | Create account |
+| `POST` | `/api/v2/user/signin` | Authenticate |
+| `GET` | `/api/v2/user/profile` | Get profile (auth) |
+
+### VM Instances
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v2/vmInstance/create` | Provision new VM |
+| `GET` | `/api/v2/vmInstance/:id` | Get instance details |
+| `PUT` | `/api/v2/vmInstance/:id` | Update configuration |
+| `DELETE` | `/api/v2/vmInstance/:id` | Terminate instance |
+| `GET` | `/api/v2/vmInstance/user/:userId` | List user's instances |
+
+### VM Catalog
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v2/vm/types` | Available VM types |
+| `GET` | `/api/v2/vm/images` | Available images |
+| `POST` | `/api/v2/vm/deploy` | Deploy from image |
+
+### DePIN Host Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v2/user/depin/register` | Register host machine |
+| `POST` | `/api/v2/user/depin/changeVisibility` | Toggle host visibility |
+| `GET` | `/api/v2/user/depin/getAll` | List all hosts |
+| `GET` | `/api/v2/user/depin/getById/:id` | Get host details |
+| `POST` | `/api/v2/user/depin/claimSOL` | Claim host rewards |
+| `POST` | `/api/v2/user/depin/depinVerification` | Verify host machine |
+
+### Indexer Webhook
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v2/indexer/webhook` | Receive parsed on-chain events |
+| `GET` | `/api/v2/indexer/status` | Indexer health |
+
+---
+
+## Database Schema
+
+```mermaid
+erDiagram
+    User ||--o{ VMInstance : owns
+    User ||--o{ DepinHostMachine : registers
+    VMInstance ||--|| VMConfig : configured_by
+    VMInstance }o--|| VMImage : uses
+    VMInstance }o--|| VMTypes : priced_by
+    DepinHostMachine }o--|| VMImage : runs
+
+    User {
+        string id PK
+        string email UK
+        string password
+        string publicKey UK
+        datetime createdAt
+    }
+
+    VMInstance {
+        string id PK
+        string userId FK
+        string instanceId
+        string provider
+        string region
+        string status
+        string os
+        float pricePerHour
+        datetime createdAt
+        datetime expiresAt
+    }
+
+    VMConfig {
+        string id PK
+        string vmInstanceId FK, UK
+        int cpu
+        int ram
+        int disk
+        int[] ports
+    }
+
+    VMImage {
+        string id PK
+        string name
+        string description
+        string imageUrl
+        string category
+    }
+
+    VMTypes {
+        string id PK
+        string name
+        int cpu
+        int ram
+        int disk
+        float price
+    }
+
+    DepinHostMachine {
+        string id PK
+        string userId FK
+        string machineId
+        string status
+        string cpu
+        int ram
+        int disk
+        float rewards
+        datetime lastHeartbeat
+    }
+```
+
+---
+
+## Smart Contracts
+
+### Program ID (devnet)
+```
+J7nyNjMR7p9Xi8ohzkNAFmnAeVUBb1AMpGKTFGtFvVjJ
+```
+
+### Instructions
+
+#### VM Rental (11)
+
+| # | Instruction | Description |
+|---|-------------|-------------|
+| 1 | `initialize_vault` | Create admin vault PDA |
+| 2 | `transfer_to_vault_and_rent` | Deposit SOL + start rental |
+| 3 | `transfer_from_vault` | Settle payment + end rental |
+| 4 | `end_rental_session` | Complete rental period |
+| 5 | `fund_vault` | Top up admin vault |
+| 6 | `withdraw_funds` | Withdraw from admin vault |
+| 7 | `start_rental_with_escrow` | Begin escrow rental |
+| 8 | `finalize_rental_escrow` | Settle escrow payment |
+| 9 | `top_up_escrow` | Add funds to active escrow |
+| 10 | `force_terminate_rental` | Admin-terminate rental |
+
+#### DePIN Host (5)
+
+| # | Instruction | Description |
+|---|-------------|-------------|
+| 11 | `initialise_host_registration` | Register host machine PDA |
+| 12 | `activate_host` | Enable host for requests |
+| 13 | `deactivate_host` | Disable host |
+| 14 | `claim_rewards` | Withdraw earned SOL rewards |
+| 15 | `penalize_host` | Deduct SOL for SLA violations |
+
+### State Accounts
+
+| Account | Seeds | Fields |
+|---------|-------|--------|
+| `VaultAccount` | `b"vault"` | admin, total_deposited, total_withdrawn, bump |
+| `RentalSession` | `b"rental", user_key, vm_id` | user, vm_id, provider, start_time, end_time, amount_deposited, is_active, is_escrow |
+| `EscrowSession` | `b"escrow", user_key, vm_id` | user, vm_id, amount_escrowed, rate_per_slot, start_slot, last_top_up_slot, status |
+| `HostMachineRegistration` | `b"host", host_key, machine_id` | host, machine_id, status, cpu, ram, disk, rewards_earned, last_claim |
+
+---
+
+## Indexer
+
+The Rust indexer is the backbone of real-time transaction confirmation:
+
+```
+                        ┌──────────────┐
+  Solana Validator ────▶│  logsSubscribe │
+                        └──────┬───────┘
+                               │ raw log
+                               ▼
+                        ┌──────────────┐
+                        │   parser.rs   │
+                        │ Anchor log →  │
+                        │ ParsedEvent   │
+                        └──────┬───────┘
+                               │
+                    ┌──────────┴──────────┐
+                    ▼                     ▼
+            ┌──────────────┐    ┌──────────────┐
+            │  notifier.rs  │    │  notifier.rs  │
+            │ POST to       │    │ WS send to    │
+            │ backend       │    │ ws-relayer    │
+            └──────────────┘    └──────────────┘
+                    │                     │
+                    ▼                     ▼
+            ┌──────────────┐    ┌──────────────┐
+            │   Backend    │    │  ws-relayer   │
+            │ stores event │    │ broadcasts   │
+            │ in DB        │    │ to frontend   │
+            └──────────────┘    └──────────────┘
+```
+
+The indexer supports two transport modes:
+- **WebSocket (default)** — `logsSubscribe` RPC method, connects to Solana WS endpoint
+- **gRPC (optional)** — Yellowstone gRPC geyser for production-grade streaming, enabled with `--features grpc`
+
+---
+
+## Deployment
+
+### Kubernetes
+
+```bash
+# Apply all manifests
+kubectl apply -f ops/
+
+# Verify
+kubectl get pods -n decloud
+kubectl get ingress -n decloud
+```
+
+### Domains
+
+| URL | Service |
+|-----|---------|
+| `https://decloud.krishlabs.tech` | Frontend |
+| `https://api.decloud.krishlabs.tech` | Backend API |
+| `wss://wss.decloud.krishlabs.tech` | WebSocket relay |
+| `wss://wss.depin.decloud.krishlabs.tech` | DePIN WS relay |
+
+### Docker Images
+
+All images are multi-stage builds on `oven/bun:alpine`:
+
+| Service | Image | Dockerfile |
+|---------|-------|-----------|
+| Backend | `krishanand01/decloud-backend:v2.1` | `docker/backend.dockerfile` |
+| Frontend | `krishanand01/decloud-frontend:v2.2` | `docker/frontend.dockerfile` |
+| Worker | `krishanand01/decloud-worker:v2.1` | `docker/worker.dockerfile` |
+| WS Relayer | `krishanand01/decloud-ws-relayer:v1.1` | `docker/ws-relayer.dockerfile` |
+| DePIN WS | `krishanand01/decloud-depin-ws-relayer:v2.1` | `docker/depin-ws-relayer.dockerfile` |
+
+---
+
+## Local Development
+
+### Full Local Stack
+
+```bash
+# Terminal 1: Solana test validator
+solana-test-validator
+# airdrop SOL: solana airdrop 100 <ADMIN_WALLET> --url http://localhost:8899
+
+# Terminal 2: Backend
+cd web-services/apps/backend && bun dev
+
+# Terminal 3: Frontend
+cd web-services/apps/frontend && bun dev
+
+# Terminal 4: WS Relayer
+cd web-services/apps/ws-relayer && bun dev
+
+# Terminal 5: Indexer (adjust .env to point at localhost)
+cd indexer && RUST_LOG=info cargo run
+
+# Terminal 6: Worker
+cd web-services/apps/worker && bun run index.ts
+
+# Terminal 7: DePIN WS Relay
+cd web-services/apps/depin-ws-relayer && bun dev
+
+# Services needed: PostgreSQL (port 5432), Redis (port 6379)
+```
+
+### Monorepo Commands
+
+```bash
+# From web-services/
+bun install                  # Install all workspace deps
+turbo build                  # Build all packages + apps
+turbo dev                    # Start all in dev mode
+turbo lint                   # Lint all (except worker)
+turbo lint --filter=frontend # Lint specific app
+turbo build --filter=backend # Build specific app
+```
+
+---
+
+## Testing
+
+```bash
+# Smart Contract tests
+cd contract && anchor test
+
+# Frontend (if configured)
+cd web-services/apps/frontend && bun run test
+
+# Backend
+cd web-services/apps/backend && bun run test
+```
+
+---
+
+## Roadmap
+
+### v3.0 (Future)
+- AI-powered resource optimization
+- Cross-chain payment support (Ethereum, Polygon)
+- Decentralized storage integration (Filecoin, Arweave)
+- Advanced security features (SGX enclaves)
+- Spot instance market for unused capacity
+- Mobile app (React Native)
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Copyright 2026 Krish Anand

@@ -198,7 +198,7 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
           os: findVm.os,
           applicationPort: Number(ports),
           envVariables: envVars ? envVars.split(",") : [],
-          applicationUrl: `https://${config.id}-solnet.krishdev.xyz`,
+          applicationUrl: `https://${config.id}-Axion.krishlabs.tech`,
         },
       });
 

@@ -2,11 +2,11 @@
 
 set -e
 
-echo "🔧 SolNet Host Registration & Environment Setup Script (Cross-Platform)"
+echo "🔧 Axion Host Registration & Environment Setup Script (Cross-Platform)"
 
 # === CONFIG ===
-BACKEND_API="https://api.depin-worker.solnet.krishdev.xyz/v2/depinVerification"
-CONFIG_DIR="$HOME/.solnet"
+BACKEND_API="https://api.depin-worker.Axion.krishlabs.tech/v2/depinVerification"
+CONFIG_DIR="$HOME/.Axion"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 
 # === HELPER FUNCTIONS ===
@@ -388,7 +388,7 @@ configure_caddy() {
     
     # Create Caddyfile with wildcard configuration
     sudo tee "$CADDYFILE_PATH" > /dev/null <<EOF
-*.krishdev.xyz {
+*.krishlabs.tech {
   reverse_proxy localhost:{http.reverse_proxy.port}
 }
 EOF
@@ -520,7 +520,7 @@ fi
 
 # === REGISTER HOST ===
 echo ""
-print_step "Sending registration request to SolNet..."
+print_step "Sending registration request to Axion..."
 
 # Use curl if available, otherwise wget
 if command_exists curl; then
@@ -603,7 +603,7 @@ fi
 
 # === COMPLETION ===
 echo ""
-print_success "SolNet Host setup completed successfully!"
+print_success "Axion Host setup completed successfully!"
 echo ""
 echo "📁 Configuration saved to: $CONFIG_FILE"
 echo "🆔 Host ID: $HOST_ID"
@@ -614,7 +614,7 @@ echo ""
 
 if [[ "$install_caddy_choice" =~ ^[Yy]$ ]] && [ "$OS_TYPE" = "Linux" ]; then
     print_warning "DNS Configuration Required:"
-    echo "   Ensure DNS wildcard for *.solnet.krishdev.xyz points to: $IP_ADDRESS"
+    echo "   Ensure DNS wildcard for *.Axion.krishlabs.tech points to: $IP_ADDRESS"
 fi
 
 if command_exists docker && ! docker info >/dev/null 2>&1; then
@@ -631,5 +631,5 @@ if [[ "$install_websocat_choice" =~ ^[Yy]$ ]] && [ "$OS_TYPE" != "Windows" ] && 
 fi
 
 echo ""
-print_success "Your SolNet host is now registered and ready to use!"
+print_success "Your Axion host is now registered and ready to use!"
 echo "You can now run your job listener script to serve Docker apps."

@@ -420,7 +420,7 @@ export default function HeroSection() {
               </span>
               <span className="text-zinc-500 dark:text-white/45 text-xs font-mono">
                 · Billed per second · Cancel instantly
-              </span>
+              </span>{" "}
             </motion.div>
 
             {/* CTAs */}

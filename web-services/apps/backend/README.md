@@ -1,15 +1,37 @@
-# backend
+# `@decloud/backend` — REST API Server
 
-To install dependencies:
+Express.js REST API running on Bun (port 3000). Handles user auth, VM provisioning, DePIN management, and indexer webhook ingestion.
+
+## Routes
+
+| Route | Description |
+|-------|-------------|
+| `/api/v2/user` | Signup, signin, profile |
+| `/api/v2/vmInstance` | VM instance CRUD |
+| `/api/v2/vm` | VM types & images |
+| `/api/v2/user/depin` | DePIN host management |
+| `/api/v2/indexer` | Indexer webhook ingestion |
+
+## Develop
 
 ```bash
 bun install
+bun dev        # Hot-reload
+bun run index.ts  # Production start
 ```
 
-To run:
+## Environment
 
-```bash
-bun run index.ts
+```
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=...
+SOLANA_RPC_URL=http://localhost:8899
+PROGRAM_ID=J7nyNjMR7p9Xi8ohzkNAFmnAeVUBb1AMpGKTFGtFvVjJ
 ```
 
-This project was created using `bun init` in bun v1.2.4. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+## Key Files
+
+- `index.ts` — Express app setup + middleware
+- `routes/` — Route handlers per domain
+- `utils/` — VM provisioning, pricing, middleware

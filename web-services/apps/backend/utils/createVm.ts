@@ -55,7 +55,7 @@ export async function createInstance(
         items: [
           {
             key: "ssh-keys",
-            value: `solnet:${sshPublicKey}`,
+            value: `Axion:${sshPublicKey}`,
           },
         ],
       },

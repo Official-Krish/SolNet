@@ -1,5 +1,5 @@
 import { clusterApiUrl, Connection } from "@solana/web3.js";
-import { AnchorProvider, Program, Wallet, type Idl } from "@coral-xyz/anchor";
+import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import idl from "../../idl/contract.json";
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";

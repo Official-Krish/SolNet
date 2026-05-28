@@ -1,15 +1,29 @@
-# db
+# `@decloud/db` — Database Schema & Client
 
-To install dependencies:
+Prisma ORM package for PostgreSQL. Defines all data models and exposes the generated client.
+
+## Models
+
+| Model | Description |
+|-------|-------------|
+| `User` | Wallet-based user accounts (email, pubkey, JWT) |
+| `VMInstance` | Virtual machine instances (provider, region, status, pricing) |
+| `VMConfig` | VM configuration (CPU, RAM, disk, ports) |
+| `VMImage` | Pre-configured Docker / OS images |
+| `VMTypes` | Available VM pricing tiers |
+| `DepinHostMachine` | DePIN host registrations (specs, status, rewards) |
+
+## Commands
 
 ```bash
-bun install
+bunx prisma migrate dev   # Apply migrations
+bunx prisma generate      # Generate client
+bunx prisma studio        # Admin UI
 ```
 
-To run:
+## Usage
 
-```bash
-bun run index.ts
+```ts
+import prisma from "@decloud/db";
+const users = await prisma.user.findMany();
 ```
-
-This project was created using `bun init` in bun v1.2.4. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

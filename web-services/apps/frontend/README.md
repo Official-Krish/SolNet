@@ -1,69 +1,34 @@
-# React + TypeScript + Vite
+# `@decloud/frontend` — React SPA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite 7 SPA with TailwindCSS 4, shadcn/ui, and Framer Motion. Integrates Solana wallet (WalletAdapter) and real-time WebSocket updates.
 
-Currently, two official plugins are available:
+## Pages (29)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Landing, Dashboard, RentVm, vmDetail, deployImage, Host, HostDashboard, HostMachine, HostMachineDetails, Hosting, ClaimRewards, Admin, Billing, Profile, Notifications, Terminal, Status, About, Blog, Careers, Contact, Docs, FAQ, Legal, Roadmap, Tutorials, ApiReference, Signin, Signup
 
-## Expanding the ESLint configuration
+## Develop
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+bun install
+bun dev        # :5173 with HMR
+bun run build  # Production build
+bun run lint   # ESLint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+VITE_BACKEND_URL=http://localhost:3000
+VITE_WS_RELAYER_URL=ws://localhost:9093
+VITE_SOLANA_RPC_URL=http://localhost:8899
+VITE_PROGRAM_ID=J7nyNjMR7p9Xi8ohzkNAFmnAeVUBb1AMpGKTFGtFvVjJ
+```
+
+## Key Libraries
+
+- `@solana/web3.js` + `@solana/wallet-adapter-react` — Solana wallet
+- `@coral-xyz/anchor` — Program client
+- `motion` (Framer Motion) — Animations
+- `three` + `three-globe` — 3D globe visualization
+- `@xterm/xterm` + `@xterm/addon-fit` — Browser SSH terminal
+- `@radix-ui/*` + `shadcn/ui` — Component primitives

@@ -14,7 +14,7 @@
  * - A compact HUD card sits inside the map showing the live network
  *   stats with the new copy.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import countries from "@/data/globe.json";
 
@@ -173,40 +173,12 @@ const regionColor = (t: Region["type"]) => {
 
 /* ───────────────────────────── component ───────────────────────────── */
 
-/** Lightweight count-up hook (mirrors the one in HeroSection). */
-function useCountUp(target: number, trigger: boolean, duration = 1800) {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (!trigger) return;
-    const start = performance.now();
-    let raf = 0;
-    const tick = () => {
-      const t = Math.min((performance.now() - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setV(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, trigger, duration]);
-  return v;
-}
-
 export default function MiniWorldMap() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<Region | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
     null,
   );
-  const [trigger, setTrigger] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setTrigger(true), 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  const vms = useCountUp(14209, trigger);
-  const sol = useCountUp(1824.6, trigger);
 
   const projected = useMemo(
     () => REGIONS.map((r) => ({ ...r, xy: project(r.lng, r.lat) })),
@@ -453,10 +425,10 @@ export default function MiniWorldMap() {
           </AnimatePresence>
         </div>
 
-        {/* Stats HUD — renamed labels per spec */}
+        {/* Stats HUD — real static info, no fake counters */}
         <div className="mt-4 grid grid-cols-2 gap-3 px-1">
-          <Stat label="Active VMs" value={Math.round(vms).toLocaleString()} />
-          <Stat label="SOL Volume (24h)" value={sol.toFixed(1)} />
+          <Stat label="Providers" value="AWS · GCP · DePIN" />
+          <Stat label="Regions" value="8 active" />
         </div>
 
         <div className="h-px bg-black/[0.08] dark:bg-white/10 mt-4" />
