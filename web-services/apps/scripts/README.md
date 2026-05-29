@@ -1,4 +1,4 @@
-# `@decloud/scripts` — Host Onboarding & Verification
+# `@Axion/scripts` — Host Onboarding & Verification
 
 Shell scripts executed on DePIN host machines for automated setup and health verification.
 

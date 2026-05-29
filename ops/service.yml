@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: decloud-frontend
-  namespace: decloud
+  name: axion-frontend
+  namespace: axion
 spec:
   selector:
-    app: decloud-frontend
+    app: axion-frontend
   ports:
     - protocol: TCP
       port: 80
@@ -15,11 +15,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: decloud-backend
-  namespace: decloud
+  name: axion-backend
+  namespace: axion
 spec:
   selector:
-    app: decloud-backend
+    app: axion-backend
   ports:
     - protocol: TCP
       port: 80
@@ -29,11 +29,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: decloud-ws-relayer
-  namespace: decloud
+  name: axion-ws-relayer
+  namespace: axion
 spec:
   selector:
-    app: decloud-ws-relayer
+    app: axion-ws-relayer
   ports:
     - protocol: TCP
       port: 80
@@ -44,7 +44,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis
-  namespace: decloud
+  namespace: axion
 spec:
   selector:
     app: redis
@@ -52,15 +52,15 @@ spec:
     - port: 6379
       targetPort: 6379
   type: ClusterIP
-
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: decloud-depin-ws-relayer
-  namespace: decloud
+  name: axion-depin-ws-relayer
+  namespace: axion
 spec:
   selector:
-    app: decloud-depin-ws-relayer
+    app: axion-depin-ws-relayer
   ports:
     - protocol: TCP
       port: 80

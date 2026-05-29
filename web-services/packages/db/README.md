@@ -1,4 +1,4 @@
-# `@decloud/db` — Database Schema & Client
+# `@Axion/db` — Database Schema & Client
 
 Prisma ORM package for PostgreSQL. Defines all data models and exposes the generated client.
 
@@ -24,6 +24,6 @@ bunx prisma studio        # Admin UI
 ## Usage
 
 ```ts
-import prisma from "@decloud/db";
+import prisma from "@Axion/db";
 const users = await prisma.user.findMany();
 ```

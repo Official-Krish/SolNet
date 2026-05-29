@@ -684,18 +684,18 @@ The indexer supports two transport modes:
 kubectl apply -f ops/
 
 # Verify
-kubectl get pods -n decloud
-kubectl get ingress -n decloud
+kubectl get pods -n Axion
+kubectl get ingress -n Axion
 ```
 
 ### Domains
 
 | URL | Service |
 |-----|---------|
-| `https://decloud.krishlabs.tech` | Frontend |
-| `https://api.decloud.krishlabs.tech` | Backend API |
-| `wss://wss.decloud.krishlabs.tech` | WebSocket relay |
-| `wss://wss.depin.decloud.krishlabs.tech` | DePIN WS relay |
+| `https://Axion.krishlabs.tech` | Frontend |
+| `https://api.Axion.krishlabs.tech` | Backend API |
+| `wss://wss.Axion.krishlabs.tech` | WebSocket relay |
+| `wss://wss.depin.Axion.krishlabs.tech` | DePIN WS relay |
 
 ### Docker Images
 
@@ -703,11 +703,11 @@ All images are multi-stage builds on `oven/bun:alpine`:
 
 | Service | Image | Dockerfile |
 |---------|-------|-----------|
-| Backend | `krishanand01/decloud-backend:v2.1` | `docker/backend.dockerfile` |
-| Frontend | `krishanand01/decloud-frontend:v2.2` | `docker/frontend.dockerfile` |
-| Worker | `krishanand01/decloud-worker:v2.1` | `docker/worker.dockerfile` |
-| WS Relayer | `krishanand01/decloud-ws-relayer:v1.1` | `docker/ws-relayer.dockerfile` |
-| DePIN WS | `krishanand01/decloud-depin-ws-relayer:v2.1` | `docker/depin-ws-relayer.dockerfile` |
+| Backend | `krishanand01/Axion-backend:v2.1` | `docker/backend.dockerfile` |
+| Frontend | `krishanand01/Axion-frontend:v2.2` | `docker/frontend.dockerfile` |
+| Worker | `krishanand01/Axion-worker:v2.1` | `docker/worker.dockerfile` |
+| WS Relayer | `krishanand01/Axion-ws-relayer:v1.1` | `docker/ws-relayer.dockerfile` |
+| DePIN WS | `krishanand01/Axion-depin-ws-relayer:v2.1` | `docker/depin-ws-relayer.dockerfile` |
 
 ---
 

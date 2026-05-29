@@ -1,4 +1,4 @@
-# `@decloud/ws-relayer` — WebSocket Relay + SSH Proxy
+# `@Axion/ws-relayer` — WebSocket Relay + SSH Proxy
 
 Bun WebSocket server (port 9093) with two responsibilities:
 

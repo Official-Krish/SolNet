@@ -1,11 +1,11 @@
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { getAdminPublicKey, SECRET_KEY } from "@/config";
-import { Contarct } from "./contract";
+import { getContract } from "./contract";
 
 export const claimSolana = async (wallet: AnchorWallet, id: string) => {
   try {
-    const program = Contarct(wallet);
+    const program = getContract(wallet);
     const txn = await program.methods
       .claimRewards(id, SECRET_KEY)
       .accounts({
@@ -36,7 +36,7 @@ export async function getEarnedSOL(
   userPublicKey: PublicKey,
   wallet: AnchorWallet,
 ): Promise<number> {
-  const program = Contarct(wallet);
+  const program = getContract(wallet);
   const [pda] = PublicKey.findProgramAddressSync(
     [
       Buffer.from("host_machine"),

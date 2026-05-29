@@ -1,4 +1,4 @@
-# `@decloud/worker` — Background Job Processor
+# `@Axion/worker` — Background Job Processor
 
 BullMQ worker that processes VM provisioning and DePIN host lifecycle jobs. Communicates with the Solana smart contract via Anchor and provisions GCP Compute Engine instances.
 

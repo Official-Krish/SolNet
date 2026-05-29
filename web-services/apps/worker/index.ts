@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import compute from "@google-cloud/compute";
-import prisma from "@decloud/db";
-import { redisConnection as connection } from "@decloud/utilities/redis";
+import prisma from "@axion/db";
+import { redisConnection as connection } from "@axion/utilities/redis";
 import {
   activateHost,
   deActivateHost,

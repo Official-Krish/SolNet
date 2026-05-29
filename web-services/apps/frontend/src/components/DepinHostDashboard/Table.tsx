@@ -16,7 +16,7 @@ import {
 import { Eye, Power, PowerOff, Server } from "lucide-react";
 import type { Machine } from "types/depinMachines";
 import { Button } from "../ui/button";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Badge } from "../ui/badge";
 import { toast } from "sonner";
 import axios from "axios";

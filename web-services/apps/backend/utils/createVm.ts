@@ -5,7 +5,6 @@ import sshpk from "sshpk";
 
 const networkName = "global/networks/default";
 const projectId = process.env.PROJECT_ID;
-const sourceImage = "projects/debian-cloud/global/images/family/debian-11";
 
 interface CreateInstanceResult {
   ipAddress: string | null | undefined;
@@ -13,6 +12,12 @@ interface CreateInstanceResult {
   privateKey: string;
   publicKey: string;
 }
+
+const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "pkcs1", format: "pem" },
+  privateKeyEncoding: { type: "pkcs1", format: "pem" },
+});
 
 export async function createInstance(
   instanceName: string,
@@ -22,23 +27,21 @@ export async function createInstance(
   os: string,
 ): Promise<CreateInstanceResult> {
   const instancesClient = new compute.InstancesClient();
-  const machine = machineType;
   const sshPublicKey = sshpk.parseKey(publicKey, "pem").toString("ssh");
+  const sourceImage = getSourceImage(os);
+
   const [response] = await instancesClient.insert({
     instanceResource: {
       name: instanceName,
       disks: [
         {
-          initializeParams: {
-            diskSizeGb: diskSizeGb,
-            sourceImage,
-          },
+          initializeParams: { diskSizeGb, sourceImage },
           autoDelete: true,
           boot: true,
           type: "PERSISTENT",
         },
       ],
-      machineType: `zones/${zone}/machineTypes/${machine}`,
+      machineType: `zones/${zone}/machineTypes/${machineType}`,
       networkInterfaces: [
         {
           name: networkName,
@@ -52,20 +55,14 @@ export async function createInstance(
         },
       ],
       metadata: {
-        items: [
-          {
-            key: "ssh-keys",
-            value: `Axion:${sshPublicKey}`,
-          },
-        ],
+        items: [{ key: "ssh-keys", value: `Axion:${sshPublicKey}` }],
       },
-      tags: {
-        items: ["http-server", "https-server"],
-      },
+      tags: { items: ["http-server", "https-server"] },
     },
     project: projectId,
     zone,
   });
+
   const operationsClient = new compute.ZoneOperationsClient();
   await operationsClient.wait({
     operation: response.name,
@@ -85,7 +82,7 @@ export async function createInstance(
   return { ipAddress, instanceId, privateKey, publicKey: sshPublicKey };
 }
 
-const getSourceImage = (os: string) => {
+function getSourceImage(os: string): string {
   switch (os) {
     case "ubuntu-20.04":
       return "projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts";
@@ -112,10 +109,4 @@ const getSourceImage = (os: string) => {
     default:
       return "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts";
   }
-};
-
-const { publicKey, privateKey } = generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: "pkcs1", format: "pem" },
-  privateKeyEncoding: { type: "pkcs1", format: "pem" },
-});
+}

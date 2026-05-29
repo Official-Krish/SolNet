@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let cfg = Config::from_env();
 
-    info!("Decloud Indexer starting...");
+    info!("Axion Indexer starting...");
     info!("Program: {}", cfg.program_id);
 
     let notifier = Notifier::new(cfg.backend_webhook_url, cfg.ws_relayer_url, cfg.indexer_token);

@@ -1,6 +1,6 @@
 # Kubernetes Manifests
 
-Production deployment manifests for the Axion platform on a Kubernetes cluster (namespace: `decloud`).
+Production deployment manifests for the Axion platform on a Kubernetes cluster (namespace: `Axion`).
 
 ## Components
 
@@ -16,16 +16,16 @@ Production deployment manifests for the Axion platform on a Kubernetes cluster (
 
 | Host | Service |
 |------|---------|
-| `decloud.krishlabs.tech` | Frontend |
-| `api.decloud.krishlabs.tech` | Backend API |
-| `wss.decloud.krishlabs.tech` | WebSocket relay |
-| `wss.depin.decloud.krishlabs.tech` | DePIN WebSocket relay |
+| `Axion.krishlabs.tech` | Frontend |
+| `api.Axion.krishlabs.tech` | Backend API |
+| `wss.Axion.krishlabs.tech` | WebSocket relay |
+| `wss.depin.Axion.krishlabs.tech` | DePIN WebSocket relay |
 
 ## Apply
 
 ```bash
 kubectl apply -f ops/
-kubectl get pods -n decloud
+kubectl get pods -n Axion
 ```
 
 ## Images

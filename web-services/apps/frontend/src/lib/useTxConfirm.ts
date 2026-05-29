@@ -1,16 +1,4 @@
-/**
- * useTxConfirm — shared hook for indexer-first, RPC-poll fallback confirmation.
- *
- * Usage:
- *   const { watch } = useTxConfirm(walletPubkey);
- *   const sig = await someContractCall();
- *   watch(sig, { onConfirmed, onFailed, timeoutMs: 30000 });
- *
- * The hook subscribes to useIndexerEvents for the given pubkey.
- * When an event arrives matching the signature, it resolves immediately.
- * If no indexer event arrives within timeoutMs, it polls RPC every 2s.
- */
-import { useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useIndexerEvents } from "./useIndexerEvents";
 import { clusterApiUrl, Connection } from "@solana/web3.js";
 
@@ -19,6 +7,17 @@ type Resolver = { onConfirmed: () => void; onFailed: () => void };
 export function useTxConfirm(walletPubkey: string | undefined) {
   const pending = useRef<Map<string, Resolver>>(new Map());
   const polls = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const conn = useMemo(() => new Connection(clusterApiUrl("devnet")), []);
+
+  useEffect(() => {
+    const p = pending.current;
+    const po = polls.current;
+    return () => {
+      for (const interval of po.values()) clearInterval(interval);
+      p.clear();
+      po.clear();
+    };
+  }, []);
 
   useIndexerEvents({
     account: walletPubkey,
@@ -47,7 +46,6 @@ export function useTxConfirm(walletPubkey: string | undefined) {
     const poll = setInterval(async () => {
       elapsed += 2000;
       try {
-        const conn = new Connection(clusterApiUrl("devnet"));
         const status = await conn.getSignatureStatus(signature, {
           searchTransactionHistory: true,
         });
@@ -69,7 +67,7 @@ export function useTxConfirm(walletPubkey: string | undefined) {
         if (pending.current.has(signature)) {
           pending.current.delete(signature);
           polls.current.delete(signature);
-          onConfirmed(); // fallback: assume confirmed
+          onConfirmed();
         }
       }
     }, 2000);
