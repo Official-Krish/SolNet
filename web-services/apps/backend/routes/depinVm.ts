@@ -18,10 +18,65 @@ import {
 import bcrypt from "bcrypt";
 import { calculatePricePerHour } from "../utils/calculatePrice";
 import { fail, getUserOr404, ok, signToken } from "../utils/helpers";
+import { getCloudflareAPI } from "../utils/cloudflare";
 
 const depinVM = Router();
-const ws = new WebSocket(process.env.DEPIN_WS_URL || "ws://localhost:8080");
-ws.addEventListener("error", (err) => console.error("DePIN WS error:", err));
+
+// --- Resilient WS connection to depin-ws-relayer with auto-reconnect ---
+const DEPIN_WS_URL = process.env.DEPIN_WS_URL || "ws://localhost:8080";
+let ws: WebSocket | null = null;
+let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function connectDepinWs() {
+  ws = new WebSocket(DEPIN_WS_URL);
+  ws.addEventListener("open", () => {
+    console.log("[depin-ws] Connected");
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+  });
+  ws.addEventListener("error", (err) =>
+    console.error("[depin-ws] Error:", err),
+  );
+  ws.addEventListener("close", () => {
+    console.warn("[depin-ws] Disconnected, reconnecting in 3s...");
+    wsReconnectTimer = setTimeout(connectDepinWs, 3000);
+  });
+}
+connectDepinWs();
+
+function wsSend(payload: object): boolean {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(payload));
+    return true;
+  }
+  console.error("[depin-ws] Cannot send, not connected");
+  return false;
+}
+
+// --- Helper: parse "KEY=VAL,KEY2=VAL2" into Record<string,string> ---
+function parseEnvVars(envVars?: string): Record<string, string> {
+  if (!envVars) return {};
+  const result: Record<string, string> = {};
+  for (const pair of envVars.split(",")) {
+    const eq = pair.indexOf("=");
+    if (eq > 0) result[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+  }
+  return result;
+}
+
+let _cf: ReturnType<typeof getCloudflareAPI> | null = null;
+function getCF() {
+  if (!_cf) {
+    try {
+      _cf = getCloudflareAPI();
+    } catch {
+      return null;
+    }
+  }
+  return _cf;
+}
 
 depinVM.post("/findVM", authMiddleware, async (req, res) => {
   const user = await getUserOr404(res, req.userId);
@@ -114,21 +169,19 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
             .filter((p) => !isNaN(p))
         : [];
       const token = signToken({ id: req.userId!, machineId: findVm.id });
-      try {
-        ws.send(
-          JSON.stringify({
-            type: "start-job",
-            jobId: id,
-            dockerImage,
-            ports: portList,
-            env: envVars ? envVars.split(",") : [],
-            machineId: findVm.id,
-            token,
-          }),
-        );
-      } catch (e) {
-        console.error("WS send error:", e);
-      }
+      const cf = getCF();
+      const containerPort = portList[0] || 80;
+      const subdomain = `${id}-depin.${cf?.domain || "axion.krishlabs.tech"}`;
+      wsSend({
+        type: "start-job",
+        jobId: id,
+        dockerImage,
+        containerPort,
+        subdomain,
+        env: parseEnvVars(envVars),
+        machineId: findVm.id,
+        token,
+      });
 
       await tx.depinHostMachine.update({
         where: { id: findVm.id },
@@ -174,11 +227,20 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
           diskSize: parseInt(diskSize),
           depinHostMachineId: findVm.id,
           os: findVm.os,
-          applicationPort: portList[0] || 0,
-          envVariables: envVars ? envVars.split(",") : [],
-          applicationUrl: `https://${config.id}/depin/axion.krishlabs.tech`,
+          applicationPort: containerPort,
+          envVariables: envVars ? envVars.split(",").map((s) => s.trim()) : [],
+          applicationUrl: `https://${subdomain}`,
         },
       });
+
+      // Create Cloudflare DNS record
+      if (cf && findVm.tunnelId) {
+        try {
+          await cf.createDNSRecord(id, findVm.tunnelId);
+        } catch (err) {
+          console.error("Error creating DNS record:", err);
+        }
+      }
       return config;
     });
 
@@ -215,13 +277,7 @@ depinVM.delete("/terminate/:id", authMiddleware, async (req, res) => {
   try {
     await prisma.$transaction(async (tx) => {
       const token = signToken({ id: req.userId!, machineId }, "5Mins");
-      try {
-        ws.send(
-          JSON.stringify({ type: "end-job", jobId: vmId, machineId, token }),
-        );
-      } catch (e) {
-        console.error("WS send error:", e);
-      }
+      wsSend({ type: "end-job", jobId: vmId, machineId, token });
       await tx.vMInstance.update({
         where: { id: vmId },
         data: { status: "TERMINATED" },
@@ -237,6 +293,16 @@ depinVM.delete("/terminate/:id", authMiddleware, async (req, res) => {
       pubKey: user.publicKey,
       id: machineId,
     });
+
+    // Delete Cloudflare DNS record
+    const cf = getCF();
+    if (cf) {
+      try {
+        await cf.deleteDNSRecord(vmId);
+      } catch (err) {
+        console.error("Error deleting DNS record:", err);
+      }
+    }
 
     ok(res, { message: "Termination request sent successfully" });
   } catch (error) {
@@ -306,7 +372,37 @@ depinVM.post("/depinVerification", async (req, res) => {
     });
 
     const token = signToken({ id: vm.id, userPublicKey: wallet });
-    ok(res, { message: "VM verified successfully", host_id: vm.id, token });
+
+    // Fetch tunnel token for cloudflared --token mode
+    let tunnelToken: string | null = null;
+    const cf = getCF();
+    if (cf && vm.tunnelId) {
+      try {
+        const tokenRes = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${vm.tunnelId}/token`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN!}`,
+            },
+          },
+        );
+        const tokenBody = (await tokenRes.json()) as {
+          success: boolean;
+          result: string;
+        };
+        if (tokenBody.success) tunnelToken = tokenBody.result;
+      } catch (err) {
+        console.error("Error fetching tunnel token:", err);
+      }
+    }
+
+    ok(res, {
+      message: "VM verified successfully",
+      host_id: vm.id,
+      token,
+      tunnelToken,
+      tunnelId: vm.tunnelId,
+    });
   } catch (error) {
     console.error("Error in depin verification:", error);
     fail(res, 500, "Internal server error");
@@ -345,6 +441,24 @@ depinVM.post("/register", authMiddleware, async (req, res) => {
         Key: bcrypt.hashSync(Key, 10),
       },
     });
+
+    // Create Cloudflare tunnel for this host
+    const cf = getCF();
+    if (cf) {
+      try {
+        const tunnel = await cf.createTunnel(vm.id);
+        await prisma.depinHostMachine.update({
+          where: { id: vm.id },
+          data: {
+            tunnelId: tunnel.tunnelId,
+            tunnelCredentials: JSON.stringify(tunnel.credentials),
+          },
+        });
+      } catch (err) {
+        console.error("Error creating Cloudflare tunnel:", err);
+      }
+    }
+
     ok(res, { message: "VM registered successfully", vm });
   } catch (error) {
     console.error("Error registering VM:", error);
@@ -384,14 +498,7 @@ depinVM.post("/changeVisibility", authMiddleware, async (req, res) => {
     try {
       const token = signToken({ id: req.userId!, machineId: id }, "5Mins");
       if (!status) {
-        ws.send(
-          JSON.stringify({
-            type: "end-job",
-            jobId: "all",
-            machineId: id,
-            token,
-          }),
-        );
+        wsSend({ type: "end-job", jobId: "all", machineId: id, token });
       }
     } catch (e) {
       console.error("WS send error:", e);
