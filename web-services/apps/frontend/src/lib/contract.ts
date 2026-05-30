@@ -1,20 +1,15 @@
-import {
-  clusterApiUrl,
-  Connection,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-} from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import idl from "../../idl/contract.json";
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";
-import { getAdminPublicKey } from "@/config";
+import { getAdminPublicKey, SOLANA_RPC_URL } from "@/config";
 
 const VAULT_SEED = "axion_vault";
 
 export function getContract(wallet: AnchorWallet): Program {
   if (!wallet) throw new Error("Wallet not connected");
-  const connection = new Connection(clusterApiUrl("devnet"));
+  const connection = new Connection(SOLANA_RPC_URL);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const provider = new AnchorProvider(connection, wallet as any, {});
   return new Program(idl as Idl, provider);
@@ -30,16 +25,13 @@ async function sendAndConfirm(program: Program, tx: Promise<string>) {
   return { success: true as const, signature, message: "" as string };
 }
 
-export const InitiatesVaultAccount = async (
-  wallet: AnchorWallet,
-  secretKey: string,
-) => {
+export const InitiatesVaultAccount = async (wallet: AnchorWallet) => {
   try {
     const program = getContract(wallet);
     const result = await sendAndConfirm(
       program,
       program.methods
-        .initializeVault(secretKey)
+        .initializeVault(VAULT_SEED)
         .accounts({ admin: wallet.publicKey })
         .rpc(),
     );
@@ -54,7 +46,6 @@ export const InitiatesVaultAccount = async (
 export const FundVaultAccount = async (
   wallet: AnchorWallet,
   amount: number,
-  secretKey: string,
 ) => {
   try {
     const program = getContract(wallet);
@@ -62,14 +53,14 @@ export const FundVaultAccount = async (
       [
         Buffer.from("vault_account"),
         wallet.publicKey.toBuffer(),
-        Buffer.from(secretKey),
+        Buffer.from(VAULT_SEED),
       ],
       program.programId,
     );
     const result = await sendAndConfirm(
       program,
       program.methods
-        .fundVault(new BN(amount * LAMPORTS_PER_SOL), secretKey)
+        .fundVault(new BN(amount * LAMPORTS_PER_SOL), VAULT_SEED)
         .accounts({ admin: wallet.publicKey })
         .rpc(),
     );
@@ -181,14 +172,13 @@ export const TransferToVaultAndStartRental = async (
 export const WithdrawFromVault = async (
   amount: number,
   wallet: AnchorWallet,
-  secretKey: string,
 ) => {
   try {
     const program = getContract(wallet);
     const result = await sendAndConfirm(
       program,
       program.methods
-        .withdrawFunds(new BN(amount * LAMPORTS_PER_SOL), secretKey)
+        .withdrawFunds(new BN(amount * LAMPORTS_PER_SOL), VAULT_SEED)
         .accounts({ admin: wallet.publicKey })
         .rpc(),
     );
@@ -203,17 +193,14 @@ export const WithdrawFromVault = async (
   }
 };
 
-export const GetVaultBalance = async (
-  wallet: AnchorWallet,
-  secretKey: string,
-) => {
+export const GetVaultBalance = async (wallet: AnchorWallet) => {
   try {
     const program = getContract(wallet);
     const [vaultAccount] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("vault_account"),
         wallet.publicKey.toBuffer(),
-        Buffer.from(secretKey),
+        Buffer.from(VAULT_SEED),
       ],
       program.programId,
     );
@@ -226,5 +213,25 @@ export const GetVaultBalance = async (
   } catch (error) {
     console.error("Error fetching vault balance", error);
     return null;
+  }
+};
+
+export const isVaultInitialized = async (
+  wallet: AnchorWallet,
+): Promise<boolean> => {
+  try {
+    const program = getContract(wallet);
+    const [vaultAccount] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("vault_account"),
+        wallet.publicKey.toBuffer(),
+        Buffer.from(VAULT_SEED),
+      ],
+      program.programId,
+    );
+    const info = await program.provider.connection.getAccountInfo(vaultAccount);
+    return info !== null;
+  } catch {
+    return false;
   }
 };

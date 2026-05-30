@@ -1,7 +1,14 @@
 export interface VM {
   id: string;
   name: string;
-  status: "RUNNING" | "TERMINATING" | "DELETED" | "BOOTING";
+  status:
+    | "RUNNING"
+    | "TERMINATING"
+    | "TERMINATED"
+    | "DELETED"
+    | "BOOTING"
+    | "DEPLOYING"
+    | "CREATING";
   region: string;
   price: string;
   createdAt: string;
@@ -27,6 +34,8 @@ export interface VM {
     os: string;
     applicationPort: string;
     applicationUrl: string;
+    depinHostMachineId: string;
+    envVariables: string[];
   };
 }
 

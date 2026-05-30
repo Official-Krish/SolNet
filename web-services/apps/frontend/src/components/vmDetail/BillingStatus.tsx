@@ -102,8 +102,8 @@ export const BillingStatus = ({ vm }: { vm: VM }) => {
     const calculateEscrowDuration = async () => {
       const endTime = await calculateEscrowEndTime(
         topUpAmount,
-        vm.VMConfig.machineType,
-        Number(vm.VMConfig.diskSize),
+        vm.VMConfig?.machineType,
+        Number(vm.VMConfig?.diskSize),
       );
       setAdditionalEscrowDuration(Number(endTime));
       const timePassed = vm.createdAt
@@ -112,8 +112,8 @@ export const BillingStatus = ({ vm }: { vm: VM }) => {
           )
         : 0;
       const used = await calculatePrice(
-        vm.VMConfig.machineType,
-        Number(vm.VMConfig.diskSize),
+        vm.VMConfig?.machineType,
+        Number(vm.VMConfig?.diskSize),
         timePassed,
       );
       setTimeUsed(Number(used));

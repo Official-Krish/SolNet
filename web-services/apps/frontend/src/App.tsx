@@ -12,6 +12,7 @@ import SSHTerminal from "./pages/Terminal";
 import { AdminPage } from "./pages/Admin";
 import { ComingSoon } from "./components/ComingSoon";
 import { HostRegister } from "./pages/HostMachine";
+import { DepinDeployment } from "./pages/DepinDeployment";
 import { HostDashboard } from "./pages/HostDashboard";
 import { DeployApp } from "./pages/deployImage";
 import { HostMachineDetails } from "./pages/HostMachineDetails";
@@ -49,6 +50,7 @@ function App() {
         <Route path="/depin/host/dashboard" element={<HostDashboard />} />
         <Route path="/docker/deploy" element={<DeployApp />} />
         <Route path="/depin/machine/:id" element={<HostMachineDetails />} />
+        <Route path="/depin/deployment/:id" element={<DepinDeployment />} />
         <Route path="/depin/rewards" element={<ClaimRewards />} />
         <Route path="/host" element={<Host />} />
 

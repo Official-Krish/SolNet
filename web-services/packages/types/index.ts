@@ -35,6 +35,7 @@ export const VmInstanceSchema = z.object({
       "ubuntu-18.04",
       "debian-10",
       "centos-7",
+      "macos",
     ])
     .default("ubuntu-22.04"),
   machineType: z
@@ -51,22 +52,11 @@ export const EscrowTopUpSchema = z.object({
 });
 
 export const RegisterVMSchema = z.object({
-  machineType: z
-    .enum(["e2-medium", "e2-small", "e2-micro", "e2-standard"])
-    .default("e2-micro"),
+  machineType: z.string().min(1),
   ipAddress: z.string(),
   cpu: z.number().int().positive(),
   ram: z.number().int().positive(),
-  os: z
-    .enum([
-      "ubuntu-20.04",
-      "ubuntu-22.04",
-      "debian-11",
-      "ubuntu-18.04",
-      "debian-10",
-      "centos-7",
-    ])
-    .default("ubuntu-22.04"),
+  os: z.string().min(1),
   diskSize: z.number().int().positive(),
   region: z.string(),
   userPublicKey: z.string(),
@@ -105,6 +95,7 @@ export const FindVmSchema = z.object({
   cpu: z.string().min(1).max(10),
   ram: z.string().min(1).max(10),
   diskSize: z.string().min(1).max(10),
+  dockerImage: z.string().min(1),
 });
 
 export const DepinDeployVmSchema = z.object({
@@ -114,10 +105,10 @@ export const DepinDeployVmSchema = z.object({
   cpu: z.string().min(1).max(10),
   ram: z.string().min(1).max(10),
   diskSize: z.string().min(1).max(10),
-  ports: z.string().min(1).max(50),
+  ports: z.array(z.string().min(1).max(5)).max(1),
   envVars: z.string().optional(),
   escrowAmount: z.number().positive(),
-  endTime: z.number(),
+  endTime: z.number().min(1),
   VmId: z.string(),
   id: z.string(),
 });

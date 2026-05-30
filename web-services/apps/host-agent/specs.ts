@@ -10,8 +10,9 @@ export interface SystemSpecs {
 }
 
 export function collectSpecs(): SystemSpecs {
+  const osName = platform() === "darwin" ? "macos" : `${type()}-${platform()}`;
   return {
-    os: `${type()}-${platform()}`,
+    os: osName,
     cpu_cores: cpus().length,
     ram_gb: Math.floor(totalmem() / 1024 / 1024 / 1024),
     disk_gb: getDiskGB(),
@@ -36,7 +37,7 @@ function getDiskGB(): number {
 
 function getPublicIP(): string {
   try {
-    return execSync("curl -s --connect-timeout 5 ifconfig.me", {
+    return execSync("curl -4 -s --connect-timeout 5 ifconfig.me", {
       encoding: "utf-8",
     }).trim();
   } catch {

@@ -213,7 +213,7 @@ vmInstance.get("/getAll", authMiddleware, async (req, res) => {
   try {
     const vms = await prisma.vMInstance.findMany({
       where: { userId: req.userId },
-      include: { VMConfig: true },
+      include: { VMConfig: true, VMImage: true },
       orderBy: { createdAt: "desc" },
     });
     ok(res, { vms });
@@ -233,7 +233,7 @@ vmInstance.get("/getDetails", authMiddleware, async (req, res) => {
   try {
     const vmInstance = await prisma.vMInstance.findFirst({
       where: { id },
-      include: { VMConfig: true },
+      include: { VMConfig: true, VMImage: true },
     });
     if (!vmInstance) {
       fail(res, 404, "VM instance not found");

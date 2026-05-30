@@ -7,16 +7,16 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { clusterApiUrl } from "@solana/web3.js";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { Toaster } from "sonner";
 import { Appbar } from "./components/Appbar.tsx";
 import { BrowserRouter } from "react-router-dom";
 import "./lib/api";
+import { SOLANA_RPC_URL } from "./config.ts";
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider defaultTheme="dark">
-    <ConnectionProvider endpoint={clusterApiUrl("devnet")}>
+    <ConnectionProvider endpoint={SOLANA_RPC_URL}>
       <WalletProvider wallets={[]} autoConnect>
         <WalletModalProvider>
           <BrowserRouter>

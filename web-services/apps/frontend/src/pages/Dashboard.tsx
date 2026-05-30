@@ -182,7 +182,11 @@ export function Dashboard() {
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               if (vm.status === "RUNNING") {
-                navigate(`/vm/${vm.id}`);
+                navigate(
+                  vm.provider === "LOCAL"
+                    ? `/depin/deployment/${vm.id}`
+                    : `/vm/${vm.id}`,
+                );
               } else {
                 toast.info("This VM is not running.", {
                   position: "top-right",
@@ -217,12 +221,16 @@ export function Dashboard() {
                   </div>
                   <div>
                     <span className="block font-medium text-foreground">
-                      {vm.VMConfig.os}
+                      {vm.VMConfig?.os || vm.VMImage?.os || "N/A"}
                     </span>
                     <span>Operating System</span>
                   </div>
                   <div>
-                    <span className="block font-medium text-foreground">{`${getVmDetails(vm.VMConfig.machineType).cpu}vCPUs • ${getVmDetails(vm.VMConfig.machineType).ram}Gb Ram`}</span>
+                    <span className="block font-medium text-foreground">
+                      {vm.provider === "LOCAL"
+                        ? `${vm.VMImage?.cpu || 0}vCPUs • ${vm.VMImage?.ram || 0}Gb Ram`
+                        : `${getVmDetails(vm.VMConfig?.machineType).cpu}vCPUs • ${getVmDetails(vm.VMConfig?.machineType).ram}Gb Ram`}
+                    </span>
                     <span>Resources</span>
                   </div>
                   <div>
@@ -244,7 +252,7 @@ export function Dashboard() {
               )}
               {vm.provider === "LOCAL" && (
                 <span className="font-mono">
-                  Image Deployed: {vm.VMImage.dockerImage}
+                  Image Deployed: {vm.VMImage?.dockerImage}
                 </span>
               )}
             </div>

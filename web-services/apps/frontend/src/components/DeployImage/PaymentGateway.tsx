@@ -26,7 +26,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { useTxConfirm } from "@/lib/useTxConfirm";
 
 type TxStatus = "idle" | "submitted" | "confirmed" | "failed";
 
@@ -61,59 +60,54 @@ export const PaymentGateway = ({
   form,
   vmId,
   PricePerHour,
-  setVm,
 }: PaymentGatewayProps) => {
   const navigate = useNavigate();
   const wallet = useAnchorWallet();
-  const { watch } = useTxConfirm(wallet?.publicKey?.toBase58());
   const [txStatus, setTxStatus] = useState<TxStatus>("idle");
   const [dialogOpen, setDialogOpen] = useState(false);
   const loading = txStatus !== "idle";
 
   const handlePayment = async () => {
-    setTxStatus("idle");
     setDialogOpen(false);
-    setVm(undefined);
 
     const id = crypto.randomUUID().substring(0, 32);
+    setTxStatus("submitted");
+
     const txn = await StartRentalSessionWithEscrow(wallet!, escrowAmount, id);
     if (!txn?.success || !txn.signature) {
+      setTxStatus("failed");
       toast.error("Failed to start rental session with escrow.");
       return;
     }
 
-    setTxStatus("submitted");
+    setTxStatus("confirmed");
 
-    watch(txn.signature, {
-      onConfirmed: async () => {
-        setTxStatus("confirmed");
-        try {
-          const res = await axios.post(
-            `${BACKEND_URL}/user/depin/deploy`,
-            {
-              ...form,
-              escrowAmount,
-              endTime: (escrowAmount / PricePerHour) * 60,
-              VmId: vmId,
-              id,
-            },
-            { headers: { Authorization: `${localStorage.getItem("token")}` } },
-          );
-          if (res.status === 200) {
-            toast.success("Payment successful! Your VM is being deployed.");
-          } else {
-            toast.error("Payment confirmed but deployment failed.");
-          }
-        } catch {
-          toast.error("Payment confirmed but deployment failed.");
-        }
-        navigate("/dashboard");
-      },
-      onFailed: () => {
-        setTxStatus("failed");
-        toast.error("Transaction failed on-chain.");
-      },
-    });
+    try {
+      const endTime =
+        PricePerHour > 0
+          ? Math.max(1, Math.floor((escrowAmount / PricePerHour) * 60))
+          : 60; // default 60 minutes if price not set
+      const res = await axios.post(
+        `${BACKEND_URL}/user/depin/deploy`,
+        {
+          ...form,
+          escrowAmount,
+          endTime,
+          VmId: vmId,
+          id,
+          ports: form.ports.split(",").map((p) => p.trim()),
+        },
+        { headers: { Authorization: `${localStorage.getItem("token")}` } },
+      );
+      if (res.status === 200) {
+        toast.success("Payment successful! Your VM is being deployed.");
+      } else {
+        toast.error("Payment confirmed but deployment failed.");
+      }
+    } catch {
+      toast.error("Payment confirmed but deployment failed.");
+    }
+    navigate("/dashboard");
   };
 
   return (

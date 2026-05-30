@@ -165,7 +165,25 @@ const terminateDepinVm = new Worker(
         return;
       }
 
-      // Send end-job to host agent
+      // Find the VM instance to calculate uptime
+      const vmInstance = await prisma.vMInstance.findFirst({
+        where: { id: findVm.VMImage?.id },
+      });
+
+      // Skip if already settled (status already TERMINATED or DELETED)
+      if (
+        vmInstance &&
+        vmInstance.status !== "DEPLOYING" &&
+        vmInstance.status !== "RUNNING" &&
+        vmInstance.status !== "BOOTING"
+      ) {
+        console.log(
+          `VM ${vmInstance.id} already in state ${vmInstance.status}, skipping settlement`,
+        );
+        return;
+      }
+
+      // Send end-job to host agent (backend may have already sent it, idempotent)
       ws.send(
         JSON.stringify({
           type: "end-job",
@@ -173,11 +191,6 @@ const terminateDepinVm = new Worker(
           jobId: findVm.VMImage?.id,
         }),
       );
-
-      // Find the VM instance to calculate uptime
-      const vmInstance = await prisma.vMInstance.findFirst({
-        where: { id: findVm.VMImage?.id },
-      });
 
       if (vmInstance) {
         const uptimeMs = Date.now() - new Date(vmInstance.startTime).getTime();

@@ -43,6 +43,7 @@ import {
   GetVaultBalance,
   InitiatesVaultAccount,
   WithdrawFromVault,
+  isVaultInitialized,
 } from "@/lib/contract";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import axios from "axios";
@@ -111,12 +112,6 @@ function TxBanner({ op }: { op: OpState }) {
   );
 }
 
-interface VaultOperation {
-  secretKey: string;
-  amount?: string;
-  address?: string;
-}
-
 export function AdminPage() {
   const wallet = useAnchorWallet();
   const [activeTab, setActiveTab] = useState("vault");
@@ -130,20 +125,18 @@ export function AdminPage() {
   const [withdrawOp, setWithdrawOp] = useState<OpState>(IDLE);
   const [balanceOp, setBalanceOp] = useState<OpState>(IDLE);
 
+  const [vaultExists, setVaultExists] = useState(false);
+
+  // Check if vault is already initialized
+  useEffect(() => {
+    if (wallet) {
+      isVaultInitialized(wallet).then(setVaultExists);
+    }
+  }, [wallet]);
+
   // Form states
-  const [initVault, setInitVault] = useState<VaultOperation>({ secretKey: "" });
-  const [fundVault, setFundVault] = useState<VaultOperation>({
-    secretKey: "",
-    amount: "",
-  });
-  const [withdrawVault, setWithdrawVault] = useState<VaultOperation>({
-    secretKey: "",
-    amount: "",
-    address: "",
-  });
-  const [balanceCheck, setBalanceCheck] = useState<VaultOperation>({
-    secretKey: "",
-  });
+  const [fundVault, setFundVault] = useState({ amount: "" });
+  const [withdrawVault, setWithdrawVault] = useState({ amount: "" });
   const [vms, setVMs] = useState<VM[]>([]);
 
   // Track pending signatures → which op they belong to
@@ -271,37 +264,26 @@ export function AdminPage() {
 
   // ── Vault operations ─────────────────────────────────────────────
   const handleInit = async () => {
-    if (!initVault.secretKey.trim()) {
-      toast.error("Secret key is required");
-      return;
-    }
     setInitOp({ status: "submitted", message: "Signing transaction…" });
-    const res = await InitiatesVaultAccount(wallet!, initVault.secretKey);
+    const res = await InitiatesVaultAccount(wallet!);
     if (!res?.success || !res.signature) {
       setInitOp({ status: "failed", message: "Failed to initialize vault." });
       toast.error("Failed to initialize vault");
       return;
     }
-    watchTx(res.signature, setInitOp, "Vault initialized successfully", () =>
-      setVaultBalance(0),
-    );
+    watchTx(res.signature, setInitOp, "Vault initialized successfully", () => {
+      setVaultBalance(0);
+      setVaultExists(true);
+    });
   };
 
   const handleFund = async () => {
-    if (!fundVault.secretKey.trim()) {
-      toast.error("Secret key is required");
-      return;
-    }
     if (!fundVault.amount || parseFloat(fundVault.amount) <= 0) {
       toast.error("Valid amount required");
       return;
     }
     setFundOp({ status: "submitted", message: "Signing transaction…" });
-    const res = await FundVaultAccount(
-      wallet!,
-      parseFloat(fundVault.amount),
-      fundVault.secretKey,
-    );
+    const res = await FundVaultAccount(wallet!, parseFloat(fundVault.amount));
     if (!res?.success || !res.signature) {
       setFundOp({ status: "failed", message: "Failed to fund vault." });
       toast.error("Failed to fund vault");
@@ -318,12 +300,8 @@ export function AdminPage() {
   };
 
   const handleWithdraw = async () => {
-    if (
-      !withdrawVault.secretKey.trim() ||
-      !withdrawVault.amount ||
-      !withdrawVault.address
-    ) {
-      toast.error("All fields are required");
+    if (!withdrawVault.amount) {
+      toast.error("Amount is required");
       return;
     }
     const amt = parseFloat(withdrawVault.amount);
@@ -332,7 +310,7 @@ export function AdminPage() {
       return;
     }
     setWithdrawOp({ status: "submitted", message: "Signing transaction…" });
-    const res = await WithdrawFromVault(amt, wallet!, withdrawVault.secretKey);
+    const res = await WithdrawFromVault(amt, wallet!);
     if (!res?.success || !res.signature) {
       setWithdrawOp({ status: "failed", message: "Failed to withdraw." });
       toast.error("Failed to withdraw");
@@ -342,12 +320,8 @@ export function AdminPage() {
   };
 
   const handleBalance = async () => {
-    if (!balanceCheck.secretKey.trim()) {
-      toast.error("Secret key is required");
-      return;
-    }
     setBalanceOp({ status: "submitted", message: "Fetching balance…" });
-    const res = await GetVaultBalance(wallet!, balanceCheck.secretKey);
+    const res = await GetVaultBalance(wallet!);
     if (!res) {
       setBalanceOp({ status: "failed", message: "Failed to fetch balance." });
       toast.error("Failed to fetch balance");
@@ -381,6 +355,21 @@ export function AdminPage() {
         variant: "destructive" as const,
         icon: AlertCircle,
         color: "text-red-500",
+      },
+      TERMINATED: {
+        variant: "destructive" as const,
+        icon: AlertCircle,
+        color: "text-red-500",
+      },
+      DEPLOYING: {
+        variant: "secondary" as const,
+        icon: Clock,
+        color: "text-blue-500",
+      },
+      CREATING: {
+        variant: "secondary" as const,
+        icon: Clock,
+        color: "text-purple-500",
       },
     };
     const config = variants[status];
@@ -478,30 +467,20 @@ export function AdminPage() {
                     <Plus className="w-5 h-5 text-blue-500" /> Initialize Vault
                   </CardTitle>
                   <CardDescription>
-                    Create a new vault account with your secret key
+                    {vaultExists
+                      ? "Vault is already initialized"
+                      : "Create the platform vault account"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter your secret key"
-                      value={initVault.secretKey}
-                      onChange={(e) =>
-                        setInitVault({
-                          ...initVault,
-                          secretKey: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
                   <Button
                     onClick={handleInit}
-                    disabled={busy(initOp)}
+                    disabled={busy(initOp) || vaultExists}
                     className="w-full"
                   >
-                    {busy(initOp) ? (
+                    {vaultExists ? (
+                      "Vault Initialized ✓"
+                    ) : busy(initOp) ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Initializing…
@@ -526,20 +505,6 @@ export function AdminPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter your secret key"
-                      value={fundVault.secretKey}
-                      onChange={(e) =>
-                        setFundVault({
-                          ...fundVault,
-                          secretKey: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label>Amount (SOL)</Label>
                     <Input
@@ -583,20 +548,6 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter your secret key"
-                      value={withdrawVault.secretKey}
-                      onChange={(e) =>
-                        setWithdrawVault({
-                          ...withdrawVault,
-                          secretKey: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label>Amount (SOL)</Label>
                     <Input
                       type="number"
@@ -607,19 +558,6 @@ export function AdminPage() {
                         setWithdrawVault({
                           ...withdrawVault,
                           amount: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Destination Address</Label>
-                    <Input
-                      placeholder="Enter Solana address"
-                      value={withdrawVault.address}
-                      onChange={(e) =>
-                        setWithdrawVault({
-                          ...withdrawVault,
-                          address: e.target.value,
                         })
                       }
                     />
@@ -654,20 +592,6 @@ export function AdminPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter your secret key"
-                      value={balanceCheck.secretKey}
-                      onChange={(e) =>
-                        setBalanceCheck({
-                          ...balanceCheck,
-                          secretKey: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
                   <Button
                     onClick={handleBalance}
                     disabled={busy(balanceOp)}
