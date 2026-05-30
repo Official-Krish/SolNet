@@ -103,9 +103,8 @@ pub mod contract {
     pub fn claim_rewards(
         ctx: Context<ClaimRewards>, 
         id: String, 
-        secret_key: String
     ) -> Result<()> {
-        depin::claim_rewards(ctx, id, secret_key)
+        depin::claim_rewards(ctx, id)
     }
 
     pub fn penalize_host(
@@ -113,5 +112,14 @@ pub mod contract {
         id: String, 
     ) -> Result<()> {
         depin::penalize_host(ctx, id)
+    }
+
+    pub fn settle_depin_job(
+        ctx: Context<SettleDepinJob>,
+        id: String,
+        host_earned: u64,
+        platform_fee_bps: u16,
+    ) -> Result<()> {
+        depin::settle_depin_job(ctx, id, host_earned, platform_fee_bps)
     }
 }

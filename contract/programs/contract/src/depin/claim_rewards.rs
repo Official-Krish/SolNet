@@ -4,7 +4,6 @@ use crate::{errors::{DepinErrors, Errors}, state::{HostMachineRegistration, Vaul
 pub fn claim_rewards(
     ctx: Context<ClaimRewards>,
     id: String,
-    _secret_key: String,
 ) -> Result<()> {
     let host_machine = &mut ctx.accounts.host_machine;
     let vault_account = &mut ctx.accounts.vault_account;
@@ -48,7 +47,7 @@ pub fn claim_rewards(
 }
 
 #[derive(Accounts)]
-#[instruction(id: String, _secret_key: String)]
+#[instruction(id: String)]
 pub struct ClaimRewards<'info> {
     #[account(mut)]
     pub host: Signer<'info>,
@@ -64,7 +63,7 @@ pub struct ClaimRewards<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault_account", admin.key().as_ref(), _secret_key.as_bytes()],
+        seeds = [b"vault_account", admin.key().as_ref(), b"axion_vault"],
         bump = vault_account.bump,
         constraint = vault_account.owner == admin.key() @ Errors::Unauthorized,
     )]
