@@ -36,7 +36,7 @@ import { Input } from "../ui/input";
 import Tooltip from "../Tooltip";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { CodeBlock } from "../DepinHosting/CodeBlock";
-import { onboardingScript } from "../DepinHosting/constants/scripts";
+import { startScript } from "../DepinHosting/constants/scripts";
 
 export const DashboardTable = ({
   machines,
@@ -277,7 +277,7 @@ export const DashboardTable = ({
           {!selectedMachine?.isActive && (
             <div className="max-w-md mx-auto mb-4 text-sm text-gray-600">
               Run this script to turn on your machine:
-              <CodeBlock script={onboardingScript} />
+              <CodeBlock script={startScript} />
             </div>
           )}
           <DialogFooter>

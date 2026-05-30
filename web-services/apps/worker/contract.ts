@@ -7,40 +7,36 @@ import {
 } from "@solana/web3.js";
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import idl from "./idl/contract.json";
-import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import bs58 from "bs58";
 import BN from "bn.js";
 
 const connection = new Connection(clusterApiUrl("devnet"));
 
-const secretKey = process.env.PRIVATE_KEY;
-const vaultSecretKey = process.env.SECRET_KEY;
+const VAULT_SEED = "axion_vault";
 
-if (!secretKey) {
-  throw new Error("SECRET_KEY environment variable is not set.");
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error("PRIVATE_KEY environment variable is not set.");
 }
-const payerKeypair = Keypair.fromSecretKey(bs58.decode(secretKey));
+const payerKeypair = Keypair.fromSecretKey(bs58.decode(privateKey));
 
 const wallet = {
   publicKey: payerKeypair.publicKey,
-  signTransaction: async (transaction) => {
-    (transaction as Transaction).partialSign(payerKeypair);
+  signTransaction: async (transaction: Transaction) => {
+    transaction.partialSign(payerKeypair);
     return transaction;
   },
-  signAllTransactions: async (transactions) => {
-    return Promise.all(
-      transactions.map(async (tx) => {
-        (tx as Transaction).partialSign(payerKeypair);
-        return tx;
-      }),
-    );
+  signAllTransactions: async (transactions: Transaction[]) => {
+    return transactions.map((tx) => {
+      tx.partialSign(payerKeypair);
+      return tx;
+    });
   },
-  connected: true,
-} as AnchorWallet;
+};
 
 const provider = new AnchorProvider(
   connection,
-  wallet,
+  wallet as any,
   AnchorProvider.defaultOptions(),
 );
 const program = new Program(idl as Idl, provider);
@@ -52,21 +48,16 @@ export async function endRentalSession(
 ): Promise<string | null> {
   const userPublicKey = new PublicKey(userPubKey);
 
-  const [rentalSessionPDA, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from("rental_session"), userPublicKey.toBuffer(), Buffer.from(id)],
-    program.programId,
-  );
-
   try {
     if (!isEscrow) {
-      const accountInfo = await connection.getAccountInfo(rentalSessionPDA);
-
-      if (!accountInfo) {
-        throw new Error(
-          `Rental session account not found at PDA: ${rentalSessionPDA.toString()}`,
-        );
-      }
-
+      const [rentalSessionPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("rental_session"),
+          userPublicKey.toBuffer(),
+          Buffer.from(id),
+        ],
+        program.programId,
+      );
       const tx = await program.methods
         .endRentalSession(id, userPublicKey)
         .accounts({
@@ -75,36 +66,19 @@ export async function endRentalSession(
         })
         .signers([payerKeypair])
         .rpc();
-      const transaction =
-        await program.provider.connection.confirmTransaction(tx);
-      if (transaction.value.err) {
-        console.error("Transaction failed", transaction.value.err);
-        return null;
-      }
-
+      await connection.confirmTransaction(tx);
       return tx;
     } else {
-      if (!vaultSecretKey) {
-        throw new Error(
-          "SECRET_KEY environment variable is not set for escrow termination.",
-        );
-      }
-
-      const txn = await program.methods
-        .forceTerminateRental(id, vaultSecretKey)
+      const tx = await program.methods
+        .forceTerminateRental(id, VAULT_SEED)
         .accounts({
           admin: wallet.publicKey,
           user: userPublicKey,
         })
         .signers([payerKeypair])
         .rpc();
-      const transaction =
-        await program.provider.connection.confirmTransaction(txn);
-      if (transaction.value.err) {
-        console.error("Transaction failed", transaction.value.err);
-        return null;
-      }
-      return txn;
+      await connection.confirmTransaction(tx);
+      return tx;
     }
   } catch (error) {
     console.error("Error ending rental session:", error);
@@ -123,7 +97,7 @@ export async function InitialiseHostPDA(
 ): Promise<{ hostMachinePda: PublicKey } | null> {
   try {
     const userPublicKey = new PublicKey(userPubKey);
-    const [hostMachinePda, bump] = PublicKey.findProgramAddressSync(
+    const [hostMachinePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("host_machine"), userPublicKey.toBuffer(), Buffer.from(id)],
       program.programId,
     );
@@ -142,15 +116,8 @@ export async function InitialiseHostPDA(
       })
       .signers([payerKeypair])
       .rpc();
-    const transaction =
-      await program.provider.connection.confirmTransaction(tx);
-    if (transaction.value.err) {
-      console.error("Transaction failed", transaction.value.err);
-      return null;
-    }
-    return {
-      hostMachinePda,
-    };
+    await connection.confirmTransaction(tx);
+    return { hostMachinePda };
   } catch (error) {
     console.error("Error initializing host PDA:", error);
     throw error;
@@ -162,7 +129,6 @@ export async function deActivateHost(
   userPubKey: string,
 ): Promise<string | null> {
   const userPublicKey = new PublicKey(userPubKey);
-
   try {
     const tx = await program.methods
       .deactivateHost(id)
@@ -172,13 +138,7 @@ export async function deActivateHost(
       })
       .signers([payerKeypair])
       .rpc();
-    const transaction =
-      await program.provider.connection.confirmTransaction(tx);
-    if (transaction.value.err) {
-      console.error("Transaction failed", transaction.value.err);
-      return null;
-    }
-
+    await connection.confirmTransaction(tx);
     return tx;
   } catch (error) {
     console.error("Error deactivating host:", error);
@@ -191,7 +151,6 @@ export async function activateHost(
   userPubKey: string,
 ): Promise<string | null> {
   const userPublicKey = new PublicKey(userPubKey);
-
   try {
     const tx = await program.methods
       .activateHost(id)
@@ -201,15 +160,91 @@ export async function activateHost(
       })
       .signers([payerKeypair])
       .rpc();
-    const transaction =
-      await program.provider.connection.confirmTransaction(tx);
-    if (transaction.value.err) {
-      console.error("Transaction failed", transaction.value.err);
-      return null;
-    }
+    await connection.confirmTransaction(tx);
     return tx;
   } catch (error) {
     console.error("Error activating host:", error);
+    throw error;
+  }
+}
+
+export async function claimRewards(
+  id: string,
+  userPubKey: string,
+): Promise<string | null> {
+  const userPublicKey = new PublicKey(userPubKey);
+  try {
+    // claim_rewards requires the host to sign — we use admin to relay
+    // The host PDA is derived from the host's pubkey
+    const tx = await program.methods
+      .claimRewards(id)
+      .accounts({
+        host: userPublicKey,
+        admin: payerKeypair.publicKey,
+      })
+      .signers([payerKeypair])
+      .rpc();
+    await connection.confirmTransaction(tx);
+    return tx;
+  } catch (error) {
+    console.error("Error claiming rewards:", error);
+    throw error;
+  }
+}
+
+export async function settleDepinJob(
+  id: string,
+  renterPubKey: string,
+  hostPubKey: string,
+  hostEarned: number,
+  platformFeeBps: number,
+  platformVaultPubKey: string,
+): Promise<string | null> {
+  const renter = new PublicKey(renterPubKey);
+  const host = new PublicKey(hostPubKey);
+  const platformVault = new PublicKey(platformVaultPubKey);
+  const [hostMachine] = PublicKey.findProgramAddressSync(
+    [Buffer.from("host_machine"), host.toBuffer(), Buffer.from(id)],
+    program.programId,
+  );
+  try {
+    const tx = await program.methods
+      .settleDepinJob(id, new BN(hostEarned), platformFeeBps)
+      .accounts({
+        admin: payerKeypair.publicKey,
+        renter,
+        host,
+        platformVault,
+        hostMachine,
+      })
+      .signers([payerKeypair])
+      .rpc();
+    await connection.confirmTransaction(tx);
+    return tx;
+  } catch (error) {
+    console.error("Error settling DePIN job:", error);
+    throw error;
+  }
+}
+
+export async function penalizeHost(
+  id: string,
+  userPubKey: string,
+): Promise<string | null> {
+  const userPublicKey = new PublicKey(userPubKey);
+  try {
+    const tx = await program.methods
+      .penalizeHost(id)
+      .accounts({
+        admin: payerKeypair.publicKey,
+        user: userPublicKey,
+      })
+      .signers([payerKeypair])
+      .rpc();
+    await connection.confirmTransaction(tx);
+    return tx;
+  } catch (error) {
+    console.error("Error penalizing host:", error);
     throw error;
   }
 }

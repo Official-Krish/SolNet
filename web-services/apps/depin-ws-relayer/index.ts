@@ -190,6 +190,12 @@ function handleHeartbeat(data: WsMessage) {
   const conn = activeConnections.get(machineId);
   if (conn) {
     conn.lastHeartbeat = Date.now();
+    prisma.depinHostMachine
+      .update({
+        where: { id: machineId },
+        data: { lastHeartbeat: new Date() },
+      })
+      .catch(() => {});
   }
 }
 

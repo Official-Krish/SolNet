@@ -8,7 +8,7 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
-import { verificationScript } from "./constants/scripts";
+import { installScript } from "./constants/scripts";
 
 interface Step2Props {
   handleStep2Verify: () => Promise<void>;
@@ -119,7 +119,7 @@ export const Step2 = ({ handleStep2Verify, isLoading }: Step2Props) => {
           specs and availability before adding it to the network.
         </p>
 
-        <CodeBlock script={verificationScript} />
+        <CodeBlock script={installScript} />
 
         {/* Info row */}
         <div
