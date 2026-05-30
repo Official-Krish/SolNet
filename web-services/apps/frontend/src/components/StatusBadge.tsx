@@ -1,7 +1,14 @@
 import { motion } from "motion/react";
 
 interface StatusBadgeProps {
-  status: "RUNNING" | "TERMINATING" | "DELETED" | "BOOTING";
+  status:
+    | "RUNNING"
+    | "TERMINATING"
+    | "TERMINATED"
+    | "DELETED"
+    | "BOOTING"
+    | "DEPLOYING"
+    | "CREATING";
   className?: string;
 }
 
@@ -30,6 +37,24 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
       text: "text-red-700 dark:text-red-300",
       border: "border-red-500/20",
       dot: "bg-red-500",
+    },
+    TERMINATED: {
+      bg: "bg-red-500/10 dark:bg-red-500/20",
+      text: "text-red-700 dark:text-red-300",
+      border: "border-red-500/20",
+      dot: "bg-red-500",
+    },
+    DEPLOYING: {
+      bg: "bg-blue-500/10 dark:bg-blue-500/20",
+      text: "text-blue-700 dark:text-blue-300",
+      border: "border-blue-500/20",
+      dot: "bg-blue-500",
+    },
+    CREATING: {
+      bg: "bg-purple-500/10 dark:bg-purple-500/20",
+      text: "text-purple-700 dark:text-purple-300",
+      border: "border-purple-500/20",
+      dot: "bg-purple-500",
     },
   };
 

@@ -60,6 +60,7 @@ export const Form = ({ formData, setFormData, setVm, setStep }: FormProps) => {
           cpu: formData.cpu,
           ram: formData.ram,
           diskSize: formData.diskSize,
+          dockerImage: formData.dockerImage,
         },
         {
           headers: {

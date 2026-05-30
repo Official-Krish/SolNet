@@ -129,6 +129,8 @@ function startJob(msg: any, config: AgentConfig) {
   } catch {}
 
   const args = ["run", "-d", "--name", name, "--label", "axion.job=true"];
+  if (config.cpu) args.push("--cpus", String(config.cpu));
+  if (config.ram) args.push("--memory", `${config.ram}g`);
   if (ports) for (const p of ports) args.push("-p", `${p}:${p}`);
   if (env)
     for (const [k, v] of Object.entries(env)) args.push("-e", `${k}=${v}`);
@@ -156,6 +158,12 @@ function startJob(msg: any, config: AgentConfig) {
 function endJob(msg: any, config: AgentConfig) {
   const { jobId } = msg;
   if (!jobId) return;
+
+  if (jobId === "all") {
+    console.log("  [job] Stopping all containers (deactivated)");
+    stopAllContainers();
+    return;
+  }
 
   console.log(`  [job] Stopping: ${jobId}`);
   const name = `${jobId}-axion`;

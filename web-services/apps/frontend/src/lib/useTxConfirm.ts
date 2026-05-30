@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useIndexerEvents } from "./useIndexerEvents";
-import { clusterApiUrl, Connection } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
+import { SOLANA_RPC_URL } from "@/config";
 
 type Resolver = { onConfirmed: () => void; onFailed: () => void };
 
 export function useTxConfirm(walletPubkey: string | undefined) {
   const pending = useRef<Map<string, Resolver>>(new Map());
   const polls = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
-  const conn = useMemo(() => new Connection(clusterApiUrl("devnet")), []);
+  const conn = useMemo(() => new Connection(SOLANA_RPC_URL), []);
 
   useEffect(() => {
     const p = pending.current;

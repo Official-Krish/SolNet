@@ -44,4 +44,10 @@ export const operatingSystems = [
     icon: "🌀",
     description: "Older stable release",
   },
+  {
+    value: "macos",
+    label: "macOS",
+    icon: "🍎",
+    description: "Apple Silicon & Intel",
+  },
 ];

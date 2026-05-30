@@ -34,7 +34,23 @@ depinVM.post("/findVM", authMiddleware, async (req, res) => {
   }
 
   try {
-    const { cpu, ram, diskSize } = parseData.data;
+    const { cpu, ram, diskSize, dockerImage } = parseData.data;
+
+    // Verify docker image exists
+    const [repo, tag = "latest"] = dockerImage.includes("/")
+      ? [dockerImage.split(":")[0], dockerImage.split(":")[1] || "latest"]
+      : [
+          `library/${dockerImage.split(":")[0]}`,
+          dockerImage.split(":")[1] || "latest",
+        ];
+    const registryRes = await fetch(
+      `https://hub.docker.com/v2/repositories/${repo}/tags/${tag}`,
+    );
+    if (!registryRes.ok) {
+      fail(res, 400, `Docker image '${dockerImage}' not found on Docker Hub`);
+      return;
+    }
+
     const findVm = await prisma.depinHostMachine.findFirst({
       where: {
         isActive: true,
@@ -42,6 +58,8 @@ depinVM.post("/findVM", authMiddleware, async (req, res) => {
         ram: { gte: parseInt(ram) },
         diskSize: { gte: parseInt(diskSize) },
         isOccupied: false,
+        verified: true,
+        perHourPrice: { gt: 0 },
       },
     });
     if (!findVm) {
@@ -89,8 +107,8 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
     }
 
     const txn = await prisma.$transaction(async (tx) => {
-      const portList = ports
-        ? ports
+      const portList = ports[0]
+        ? ports[0]
             .split(",")
             .map((p) => parseInt(p.trim()))
             .filter((p) => !isNaN(p))
@@ -158,7 +176,7 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
           os: findVm.os,
           applicationPort: portList[0] || 0,
           envVariables: envVars ? envVars.split(",") : [],
-          applicationUrl: `https://${config.id}-Axion.krishlabs.tech`,
+          applicationUrl: `https://${config.id}/depin/axion.krishlabs.tech`,
         },
       });
       return config;
@@ -208,16 +226,18 @@ depinVM.delete("/terminate/:id", authMiddleware, async (req, res) => {
         where: { id: vmId },
         data: { status: "TERMINATED" },
       });
-      const depinHost = await tx.depinHostMachine.update({
-        where: { id: vmInstance.id },
+      await tx.depinHostMachine.update({
+        where: { id: machineId },
         data: { isOccupied: false },
       });
-      await activateHostQueue.add("changeVMStatus", {
-        id: depinHost.id,
-        userPubKey: depinHost.userPublicKey,
-        status: false,
-      });
     });
+
+    // Enqueue settlement (3-way split on-chain)
+    await terminateDepinVMQueue.add("terminate-depin-vm", {
+      pubKey: user.publicKey,
+      id: machineId,
+    });
+
     ok(res, { message: "Termination request sent successfully" });
   } catch (error) {
     console.error("Error terminating VM:", error);
@@ -257,9 +277,9 @@ depinVM.post("/depinVerification", async (req, res) => {
 
     if (
       vm.os !== os ||
-      vm.cpu !== Number(cpu_cores) ||
-      vm.ram !== Number(ram_gb) ||
-      vm.diskSize !== Number(disk_gb)
+      Number(cpu_cores) < vm.cpu ||
+      Number(ram_gb) < vm.ram ||
+      Number(disk_gb) < vm.diskSize
     ) {
       await prisma.depinHostMachine.delete({ where: { id: vm.id } });
       fail(res, 400, "VM details do not match");
@@ -359,6 +379,24 @@ depinVM.post("/changeVisibility", authMiddleware, async (req, res) => {
       where: { id, userPublicKey: pubKey },
       data: { isActive: status },
     });
+
+    // Notify host agent via WS relayer
+    try {
+      const token = signToken({ id: req.userId!, machineId: id }, "5Mins");
+      if (!status) {
+        ws.send(
+          JSON.stringify({
+            type: "end-job",
+            jobId: "all",
+            machineId: id,
+            token,
+          }),
+        );
+      }
+    } catch (e) {
+      console.error("WS send error:", e);
+    }
+
     ok(res, { message: "VM visibility updated successfully" });
   } catch (error) {
     console.error("Error fetching VM:", error);
@@ -437,4 +475,21 @@ depinVM.post("/claimSOL", authMiddleware, async (req, res) => {
 });
 
 const MINUTE_MS = 60 * 1000;
+
+depinVM.get("/settlement/:id", authMiddleware, async (req, res) => {
+  const user = await getUserOr404(res, req.userId);
+  if (!user) return;
+
+  const vmId = req.params.id;
+  try {
+    const settlement = await prisma.depinSettlement.findFirst({
+      where: { jobId: vmId },
+    });
+    ok(res, { settlement });
+  } catch (error) {
+    console.error("Error fetching settlement:", error);
+    fail(res, 500, "Internal server error");
+  }
+});
+
 export default depinVM;

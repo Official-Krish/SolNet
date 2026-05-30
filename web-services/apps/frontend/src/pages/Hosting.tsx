@@ -14,7 +14,7 @@ const STEPS = [
     n: "02",
     title: "Install & verify",
     desc: "Install the Axion agent on your machine. It auto-detects your hardware and verifies it matches your registration.",
-    code: "curl -sSL https://get.axion.krishlabs.tech | bash && axion register",
+    code: "curl -sSL https://cdn.krishlabs.tech/axion/depin-onboarding/install.sh | bash && axion register",
   },
   {
     n: "03",

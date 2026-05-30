@@ -10,7 +10,7 @@
     "prisma": "node ../../node_modules/prisma/build/index.js",
     "db:migrate": "node ../../node_modules/prisma/build/index.js migrate dev",
     "db:generate": "node ../../node_modules/prisma/build/index.js generate",
-    "db:studio": "node ../../node_modules/prisma/build/index.js studio",
+    "db:studio": "DEBUG=prisma:* node ../../node_modules/prisma/build/index.js studio",
     "db:seed": "bun run prisma/seed.ts",
     "lint": "tsc --noEmit",
     "postinstall": "node ../../node_modules/prisma/build/index.js generate"

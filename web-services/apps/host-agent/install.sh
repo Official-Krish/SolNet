@@ -3,22 +3,12 @@ set -e
 
 AXION_DIR="$HOME/.axion"
 AGENT_REPO="https://raw.githubusercontent.com/Official-Krish/Axion/main/web-services/apps/host-agent"
-AGENT_FILES=("index.ts" "config.ts" "specs.ts" "commands/register.ts" "commands/start.ts")
 
 echo ""
 echo "  ☁️  Axion Host Agent Installer"
 echo ""
 
-# --- Detect OS ---
-OS=$(uname -s)
-case "$OS" in
-  Linux)  PLATFORM="linux" ;;
-  Darwin) PLATFORM="macos" ;;
-  *)      echo "  ✗ Unsupported OS: $OS"; exit 1 ;;
-esac
-echo "  Platform: $PLATFORM"
-
-# --- Check/Install Bun ---
+# --- Check Bun ---
 if command -v bun &>/dev/null; then
   echo "  ✓ Bun $(bun --version) installed"
 else
@@ -26,10 +16,6 @@ else
   curl -fsSL https://bun.sh/install | bash
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
-  if ! command -v bun &>/dev/null; then
-    echo "  ✗ Bun installation failed. Install manually: https://bun.sh"
-    exit 1
-  fi
   echo "  ✓ Bun installed"
 fi
 
@@ -38,42 +24,29 @@ if command -v docker &>/dev/null; then
   if docker info &>/dev/null; then
     echo "  ✓ Docker running"
   else
-    echo "  ⚠ Docker installed but not running. Start it before using 'axion start'"
+    echo "  ⚠ Docker installed but not running"
   fi
 else
-  echo "  ⚠ Docker not found. Install it: https://docs.docker.com/get-docker/"
-  echo "    Docker is required to run jobs."
+  echo "  ⚠ Docker not found"
 fi
 
 # --- Create directories ---
-mkdir -p "$AXION_DIR/agent/commands"
+mkdir -p "$AXION_DIR/agent"
 
-# --- Download agent files ---
+# --- Build agent (bundles to single JS file) ---
 echo ""
-echo "  Downloading agent..."
+echo "  Building agent..."
+cd "$AGENT_REPO" && bun build ./index.ts --outdir ./dist --target bun --minify
 
-for file in "${AGENT_FILES[@]}"; do
-  dir=$(dirname "$AXION_DIR/agent/$file")
-  mkdir -p "$dir"
-  curl -fsSL "$AGENT_REPO/$file" -o "$AXION_DIR/agent/$file"
-done
+# --- Copy built agent ---
+cp "$AGENT_REPO/dist/index.js" "$AXION_DIR/agent/index.js"
 
-# Write package.json
-cat > "$AXION_DIR/agent/package.json" << 'EOF'
-{
-  "name": "axion-host",
-  "module": "index.ts",
-  "type": "module",
-  "private": true
-}
-EOF
+echo "  ✓ Agent installed (built)"
 
-echo "  ✓ Agent downloaded"
-
-# --- Create launcher script ---
+# --- Create launcher ---
 cat > "$AXION_DIR/axion" << EOF
 #!/bin/bash
-exec bun run "$AXION_DIR/agent/index.ts" "\$@"
+exec bun "$AXION_DIR/agent/index.js" "\$@"
 EOF
 chmod +x "$AXION_DIR/axion"
 
@@ -83,12 +56,9 @@ if [ -f "$HOME/.zshrc" ]; then
   SHELL_RC="$HOME/.zshrc"
 elif [ -f "$HOME/.bashrc" ]; then
   SHELL_RC="$HOME/.bashrc"
-elif [ -f "$HOME/.profile" ]; then
-  SHELL_RC="$HOME/.profile"
 fi
 
 PATH_LINE='export PATH="$HOME/.axion:$PATH"'
-
 if [ -n "$SHELL_RC" ]; then
   if ! grep -q '.axion' "$SHELL_RC" 2>/dev/null; then
     echo "" >> "$SHELL_RC"
@@ -102,13 +72,14 @@ fi
 
 export PATH="$HOME/.axion:$PATH"
 
-# --- Done ---
 echo ""
-echo "  ✓ Axion Host Agent installed!"
+echo "  ✓ Axion Host Agent installed! (LOCAL DEV MODE)"
 echo ""
-echo "  Usage:"
-echo "    axion register   Register this machine"
-echo "    axion start      Start earning SOL"
+echo "  Next steps:"
+echo "    1. source ~/.zshrc        (or open a new terminal)"
+echo "    2. axion register          Register this machine"
+echo "    3. axion start             Start earning SOL"
 echo ""
-echo "  Run 'source $SHELL_RC' or open a new terminal to use 'axion'."
+echo "  WS: ws://localhost:8080"
+echo "  API: http://localhost:3000/api/v2"
 echo ""

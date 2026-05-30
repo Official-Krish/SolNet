@@ -83,10 +83,6 @@ async function handleInstruction(event: IndexerEvent) {
           data: { status: "RUNNING" },
         });
       }
-
-      console.log(
-        `[Indexer] Rental payment confirmed: user=${userPubKey} amount=${amount} duration=${durationSeconds}s id=${id}`,
-      );
       break;
     }
 
@@ -102,20 +98,10 @@ async function handleInstruction(event: IndexerEvent) {
           data: { status: "RUNNING" },
         });
       }
-
-      console.log(
-        `[Indexer] Escrow funded: user=${userPubKey} amount=${amount} id=${id}`,
-      );
       break;
     }
 
     case "top_up_escrow": {
-      const userPubKey = accounts[0];
-      const amount = args?.amount as number;
-      const id = args?.id as string;
-      console.log(
-        `[Indexer] Escrow topped up: user=${userPubKey} amount=${amount} id=${id}`,
-      );
       break;
     }
 
@@ -128,7 +114,6 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id, user: { publicKey: userPubKey } },
           data: { status: "TERMINATED" },
         });
-        console.log(`[Indexer] Rental ended: id=${id} user=${userPubKey}`);
       }
       break;
     }
@@ -143,9 +128,6 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id, user: { publicKey: userPubKey } },
           data: { status: "TERMINATED" },
         });
-        console.log(
-          `[Indexer] Escrow finalized: id=${id} refund=${amount} user=${userPubKey}`,
-        );
       }
       break;
     }
@@ -157,22 +139,15 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id },
           data: { status: "TERMINATED" },
         });
-        console.log(`[Indexer] Force terminated: id=${id}`);
       }
       break;
     }
 
     case "fund_vault": {
-      const amount = args?.amount as number;
-      console.log(`[Indexer] Vault funded: amount=${amount} | tx=${signature}`);
       break;
     }
 
     case "withdraw_funds": {
-      const amount = args?.amount as number;
-      console.log(
-        `[Indexer] Vault withdrawal: amount=${amount} | tx=${signature}`,
-      );
       break;
     }
 
@@ -196,15 +171,10 @@ async function handleInstruction(event: IndexerEvent) {
           data: { pdaAddress: accounts[2] },
         });
       }
-
-      console.log(
-        `[Indexer] Host registered: id=${id} name=${hostName} type=${machineType} os=${os} disk=${diskSize} rate=${solPerHour}`,
-      );
       break;
     }
 
     case "activate_host": {
-      const id = args?.id as string;
       const hostPubKey = accounts[1];
 
       const host = await prisma.depinHostMachine.findFirst({
@@ -215,13 +185,11 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id: host.id },
           data: { isActive: true },
         });
-        console.log(`[Indexer] Host activated: id=${id} host=${hostPubKey}`);
       }
       break;
     }
 
     case "deactivate_host": {
-      const id = args?.id as string;
       const hostPubKey = accounts[1];
 
       const host = await prisma.depinHostMachine.findFirst({
@@ -232,13 +200,11 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id: host.id },
           data: { isActive: false },
         });
-        console.log(`[Indexer] Host deactivated: id=${id} host=${hostPubKey}`);
       }
       break;
     }
 
     case "penalize_host": {
-      const id = args?.id as string;
       const hostPubKey = accounts[1];
 
       const host = await prisma.depinHostMachine.findFirst({
@@ -249,17 +215,15 @@ async function handleInstruction(event: IndexerEvent) {
           where: { id: host.id },
           data: { isActive: false, verified: false },
         });
-        console.log(`[Indexer] Host penalized: id=${id} host=${hostPubKey}`);
       }
       break;
     }
 
     case "claim_rewards": {
-      const id = args?.id as string;
-      const hostPubKey = accounts[0];
-      console.log(
-        `[Indexer] Rewards claimed: id=${id} host=${hostPubKey} | tx=${signature}`,
-      );
+      break;
+    }
+
+    case "settle_depin_job": {
       break;
     }
 

@@ -42,8 +42,8 @@ export const Header = ({ vm }: { vm: VM }) => {
       const timeElapsed =
         (new Date().getTime() - new Date(vm.createdAt).getTime()) / (1000 * 60);
       const amount = await calculatePrice(
-        vm.VMConfig.machineType,
-        Number(vm.VMConfig.diskSize),
+        vm.VMConfig?.machineType,
+        Number(vm.VMConfig?.diskSize),
         timeElapsed,
       );
       const res = await FinalizeRentalWithEscrow(
@@ -71,8 +71,8 @@ export const Header = ({ vm }: { vm: VM }) => {
           if (res.status === 200) {
             if (res.data.remainingTime > 0) {
               const remainingPrice = await calculatePrice(
-                vm.VMConfig.machineType,
-                Number(vm.VMConfig.diskSize),
+                vm.VMConfig?.machineType,
+                Number(vm.VMConfig?.diskSize),
                 res.data.remainingTime,
               );
               await transferFromVault(Number(remainingPrice), vm.id, wallet!);

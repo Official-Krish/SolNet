@@ -58,6 +58,9 @@ export async function register() {
       host_id: data.host_id,
       token: data.token,
       wallet,
+      cpu: specs.cpu_cores,
+      ram: specs.ram_gb,
+      disk: specs.disk_gb,
       registered_at: new Date().toISOString(),
     });
 

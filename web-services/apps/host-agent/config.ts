@@ -5,13 +5,16 @@ import { join } from "path";
 const CONFIG_DIR = join(homedir(), ".axion");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
-export const WS_ENDPOINT = "wss://wss.depin.axion.krishlabs.tech";
-export const API_ENDPOINT = "https://api.axion.krishlabs.tech/api/v2";
+export const WS_ENDPOINT = "ws://localhost:8080";
+export const API_ENDPOINT = "http://localhost:3000/api/v2";
 
 export interface AgentConfig {
   host_id: string;
   token: string;
   wallet: string;
+  cpu: number;
+  ram: number;
+  disk: number;
   registered_at: string;
 }
 

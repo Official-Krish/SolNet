@@ -1,4 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
+import { Connection, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { motion, AnimatePresence } from "motion/react";
 import {
   IconUser,
@@ -13,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { SOLANA_RPC_URL } from "@/config";
 
 interface ProfileDropdownProps {
   isOpen: boolean;
@@ -26,13 +28,16 @@ const ProfileDropdown = ({
   isOpen,
   onClose,
   network = "devnet",
-  balance = 0,
+  balance,
   onSignOut,
 }: ProfileDropdownProps) => {
   const { publicKey } = useWallet();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [headerHovered, setHeaderHovered] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(
+    balance ?? null,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userEmail = localStorage.getItem("email") || "";
@@ -44,7 +49,43 @@ const ProfileDropdown = ({
   const sessionWallet = publicKey
     ? `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`
     : "";
-  const solBalance = balance > 0 ? `${balance.toFixed(2)} SOL` : "0.00 SOL";
+
+  useEffect(() => {
+    if (balance !== undefined) {
+      setWalletBalance(balance);
+      return;
+    }
+
+    if (!publicKey) {
+      setWalletBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+
+    const loadBalance = async () => {
+      try {
+        const lamports = await connection.getBalance(publicKey);
+        if (!cancelled) {
+          setWalletBalance(lamports / LAMPORTS_PER_SOL);
+        }
+      } catch {
+        if (!cancelled) {
+          setWalletBalance(null);
+        }
+      }
+    };
+
+    void loadBalance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [balance, publicKey]);
+
+  const solBalance =
+    walletBalance !== null ? `${walletBalance.toFixed(2)} SOL` : "—";
 
   const handleSignOut = useCallback(() => {
     if (onSignOut) {
