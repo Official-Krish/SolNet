@@ -5,7 +5,7 @@ import { CostEstimation } from "@/components/DeployImage/CostEstimation";
 import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { Machine } from "types/depinMachines";
-import { PayementGateway } from "@/components/DeployImage/PaymentGateway";
+import { PaymentGateway } from "@/components/DeployImage/PaymentGateway";
 
 export function DeployApp() {
   const wallet = useWallet();
@@ -141,7 +141,7 @@ export function DeployApp() {
                 />
               )}
               {step === 1 && vm && (
-                <PayementGateway
+                <PaymentGateway
                   escrowAmount={escrowAmount}
                   setEscrowAmount={setEscrowAmount}
                   vmId={vm.id}

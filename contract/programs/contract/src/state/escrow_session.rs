@@ -7,9 +7,10 @@ pub struct EscrowSession {
     pub amount: u64,
     pub bump: u8,
     pub user: Pubkey,
+    pub host: Pubkey,
     pub id: String,
 }
 
 impl EscrowSession {
-    pub const SIZE: usize = 8 + 1 + 8 + 1 + 32 + 40; 
+    pub const SIZE: usize = 8 + 1 + 8 + 1 + 32 + 32 + 40;
 }

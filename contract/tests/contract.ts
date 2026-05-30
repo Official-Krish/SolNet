@@ -6,7 +6,7 @@ import assert from "assert";
 describe("contract", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const user = anchor.web3.Keypair.generate();
-  const adminSecret = new Uint8Array([87,180,10,244,92,154,142,129,204,101,215,121,236,213,53,59,189,236,164,227,219,221,182,185,32,67,159,29,109,231,210,164,189,136,241,125,228,227,134,107,238,91,131,224,107,158,217,164,83,106,213,108,122,143,192,107,127,149,156,145,150,212,182,95]);
+  const adminSecret = new Uint8Array([45,176,75,158,179,168,216,1,249,139,248,103,223,99,184,249,87,37,166,53,178,217,131,109,98,166,147,95,184,192,52,28,214,5,241,72,29,151,110,62,135,118,56,140,77,91,60,245,29,120,125,201,217,74,54,60,85,155,21,98,224,146,225,143]);
   const admin = anchor.web3.Keypair.fromSecretKey(adminSecret);
   let vaultAccount: anchor.web3.PublicKey;
   const vaultId = "1001";

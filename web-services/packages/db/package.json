@@ -1,5 +1,5 @@
 {
-  "name": "@decloud/db",
+  "name": "@axion/db",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -7,8 +7,13 @@
     "@types/bun": "latest"
   },
   "scripts": {
-    "db:seed": "tsx prisma/seed.ts",
-    "lint": "tsc --noEmit"
+    "prisma": "node ../../node_modules/prisma/build/index.js",
+    "db:migrate": "node ../../node_modules/prisma/build/index.js migrate dev",
+    "db:generate": "node ../../node_modules/prisma/build/index.js generate",
+    "db:studio": "node ../../node_modules/prisma/build/index.js studio",
+    "db:seed": "bun run prisma/seed.ts",
+    "lint": "tsc --noEmit",
+    "postinstall": "node ../../node_modules/prisma/build/index.js generate"
   },
   "exports": {
     ".": "./index.ts"
@@ -19,6 +24,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
+    "@prisma/config": "^7.8.0",
     "@types/node": "^25.9.1",
     "prisma": "7.8.0"
   }

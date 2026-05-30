@@ -1,4 +1,4 @@
-# `@decloud/backend` — REST API Server
+# `@Axion/backend` — REST API Server
 
 Express.js REST API running on Bun (port 3000). Handles user auth, VM provisioning, DePIN management, and indexer webhook ingestion.
 

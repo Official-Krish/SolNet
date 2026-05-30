@@ -1,8 +1,7 @@
-
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 interface StatusBadgeProps {
-  status: "RUNNING"  | "TERMINATING" | "DELETED" | "BOOTING";
+  status: "RUNNING" | "TERMINATING" | "DELETED" | "BOOTING";
   className?: string;
 }
 
@@ -12,26 +11,26 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
       bg: "bg-emerald-500/10 dark:bg-emerald-500/20",
       text: "text-emerald-700 dark:text-emerald-300",
       border: "border-emerald-500/20",
-      dot: "bg-emerald-500"
+      dot: "bg-emerald-500",
     },
     BOOTING: {
       bg: "bg-amber-500/10 dark:bg-amber-500/20",
-      text: "text-amber-700 dark:text-amber-300", 
+      text: "text-amber-700 dark:text-amber-300",
       border: "border-amber-500/20",
-      dot: "bg-amber-500"
+      dot: "bg-amber-500",
     },
     DELETED: {
       bg: "bg-neutral-500/10 dark:bg-neutral-500/20",
       text: "text-neutral-700 dark:text-neutral-300",
-      border: "border-neutral-500/20", 
-      dot: "bg-neutral-500"
+      border: "border-neutral-500/20",
+      dot: "bg-neutral-500",
     },
     TERMINATING: {
       bg: "bg-red-500/10 dark:bg-red-500/20",
       text: "text-red-700 dark:text-red-300",
       border: "border-red-500/20",
-      dot: "bg-red-500"
-    }
+      dot: "bg-red-500",
+    },
   };
 
   const variant = variants[status];
@@ -45,7 +44,9 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
       <motion.div
         className={`w-2 h-2 rounded-full ${variant.dot}`}
         animate={status === "BOOTING" ? { opacity: [1, 0.3, 1] } : {}}
-        transition={status === "BOOTING" ? { repeat: Infinity, duration: 1.5 } : {}}
+        transition={
+          status === "BOOTING" ? { repeat: Infinity, duration: 1.5 } : {}
+        }
       />
       <span className="capitalize">{status}</span>
     </motion.div>

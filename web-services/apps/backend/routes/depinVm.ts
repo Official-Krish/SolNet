@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { authMiddleware } from "../utils/middleware";
-import prisma from "@decloud/db";
+import { authMiddleware } from "@axion/utilities/auth";
+import prisma from "@axion/db";
 import {
   ChangeVMStatusSchema,
   ClaimSOLSchema,
@@ -8,95 +8,63 @@ import {
   DepinVerificationSchema,
   FindVmSchema,
   RegisterVMSchema,
-} from "@decloud/types";
+} from "@axion/types";
 import {
   activateHostQueue,
+  claimRewardsQueue,
   initialiseAccount,
   terminateDepinVMQueue,
 } from "../redis";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { calculatePricePerHour } from "../utils/calculatePrice";
+import { fail, getUserOr404, ok, signToken } from "../utils/helpers";
 
 const depinVM = Router();
 const ws = new WebSocket(process.env.DEPIN_WS_URL || "ws://localhost:8080");
+ws.addEventListener("error", (err) => console.error("DePIN WS error:", err));
 
 depinVM.post("/findVM", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-    },
-  });
-  if (!user) {
-    res.status(404).json({
-      error: "User not found",
-    });
-    return;
-  }
+  const user = await getUserOr404(res, req.userId);
+  if (!user) return;
+
   const parseData = FindVmSchema.safeParse(req.body);
   if (!parseData.success) {
-    res.status(400).json({
-      error: "Invalid request body",
-    });
+    fail(res, 400, "Invalid request body");
     return;
   }
+
   try {
     const { cpu, ram, diskSize } = parseData.data;
     const findVm = await prisma.depinHostMachine.findFirst({
       where: {
         isActive: true,
-        cpu: {
-          gte: parseInt(cpu),
-        },
-        ram: {
-          gte: parseInt(ram),
-        },
-        diskSize: {
-          gte: parseInt(diskSize),
-        },
+        cpu: { gte: parseInt(cpu) },
+        ram: { gte: parseInt(ram) },
+        diskSize: { gte: parseInt(diskSize) },
         isOccupied: false,
       },
     });
     if (!findVm) {
-      res.status(404).json({
-        error: "No suitable VM found for deployment",
-      });
+      fail(res, 404, "No suitable VM found for deployment");
       return;
     }
-
-    res.status(200).json({
-      message: "Deployment request sent successfully",
-      vm: findVm,
-    });
+    ok(res, { message: "Deployment request sent successfully", vm: findVm });
   } catch (error) {
     console.error("Error deploying image:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.post("/deploy", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-    },
-  });
-  if (!user) {
-    res.status(404).json({
-      error: "User not found",
-    });
-    return;
-  }
+  const user = await getUserOr404(res, req.userId);
+  if (!user) return;
+
   const parseData = DepinDeployVmSchema.safeParse(req.body);
   if (!parseData.success) {
-    res.status(400).json({
-      error: "Invalid request body",
-    });
+    fail(res, 400, "Invalid request body");
     return;
   }
+
   try {
     const {
       appName,
@@ -113,45 +81,42 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
       description,
     } = parseData.data;
     const findVm = await prisma.depinHostMachine.findFirst({
-      where: {
-        id: VmId,
-        isActive: true,
-        isOccupied: false,
-      },
+      where: { id: VmId, isActive: true, isOccupied: false },
     });
     if (!findVm) {
-      res.status(404).json({
-        error: "No suitable VM found for deployment",
-      });
+      fail(res, 404, "No suitable VM found for deployment");
       return;
     }
+
     const txn = await prisma.$transaction(async (tx) => {
-      // websocket connection to send job details
-      ws.send(
-        JSON.stringify({
-          type: "start-job",
-          jobId: id,
-          dockerImage: dockerImage,
-          ports: ports ? ports.split(",").map((port) => parseInt(port)) : [],
-          env: envVars ? envVars.split(",") : [],
-          machineId: findVm.id,
-          token: jwt.sign(
-            { id: userId, machineId: findVm.id },
-            process.env.JWT_SECRET || "mysecret",
-          ),
-        }),
-      );
+      const portList = ports
+        ? ports
+            .split(",")
+            .map((p) => parseInt(p.trim()))
+            .filter((p) => !isNaN(p))
+        : [];
+      const token = signToken({ id: req.userId!, machineId: findVm.id });
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "start-job",
+            jobId: id,
+            dockerImage,
+            ports: portList,
+            env: envVars ? envVars.split(",") : [],
+            machineId: findVm.id,
+            token,
+          }),
+        );
+      } catch (e) {
+        console.error("WS send error:", e);
+      }
 
-      await prisma.depinHostMachine.update({
-        where: {
-          id: findVm.id,
-        },
-        data: {
-          isOccupied: true,
-        },
+      await tx.depinHostMachine.update({
+        where: { id: findVm.id },
+        data: { isOccupied: true },
       });
-
-      activateHostQueue.add("changeVMStatus", {
+      await activateHostQueue.add("changeVMStatus", {
         id: findVm.id,
         userPubKey: findVm.userPublicKey,
         status: true,
@@ -159,231 +124,182 @@ depinVM.post("/deploy", authMiddleware, async (req, res) => {
 
       const job = await terminateDepinVMQueue.add(
         "terminate-depin-vm",
-        {
-          pubKey: user.publicKey,
-          id: findVm.id,
-        },
-        {
-          delay: endTime * 60 * 1000,
-        },
+        { pubKey: user.publicKey, id: findVm.id },
+        { delay: endTime * MINUTE_MS },
       );
 
-      const config = await prisma.vMInstance.create({
+      const config = await tx.vMInstance.create({
         data: {
-          id: id,
+          id,
           name: appName,
-          userId: userId!,
+          userId: req.userId!,
           jobId: job.id || findVm.id,
           status: "DEPLOYING",
           PaymentType: "ESCROW",
           region: findVm.region,
           ipAddress: findVm.ipAddress,
-          endTime: new Date(Date.now() + Number(endTime) * 60 * 1000),
+          endTime: new Date(Date.now() + Number(endTime) * MINUTE_MS),
           provider: "LOCAL",
           price: escrowAmount,
           startTime: new Date(),
         },
       });
 
-      await prisma.vMImage.create({
+      await tx.vMImage.create({
         data: {
-          id: id,
+          id,
           name: appName,
-          description: description,
-          dockerImage: dockerImage,
+          description,
+          dockerImage,
           cpu: parseInt(cpu),
           ram: parseInt(ram),
           diskSize: parseInt(diskSize),
           depinHostMachineId: findVm.id,
           os: findVm.os,
-          applicationPort: Number(ports),
+          applicationPort: portList[0] || 0,
           envVariables: envVars ? envVars.split(",") : [],
           applicationUrl: `https://${config.id}-Axion.krishlabs.tech`,
         },
       });
-
       return config;
     });
 
-    res.status(200).json({
+    ok(res, {
       message: "Deployment request sent successfully",
       id: txn.id,
       name: txn.name,
     });
   } catch (error) {
     console.error("Error deploying image:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.delete("/terminate/:id", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-    },
-  });
-  if (!user) {
-    res.status(404).json({
-      error: "User not found",
-    });
-    return;
-  }
+  const user = await getUserOr404(res, req.userId);
+  if (!user) return;
+
   const vmId = req.params.id;
   const vmInstance = await prisma.vMInstance.findFirst({
-    where: {
-      id: vmId,
-      userId: userId,
-    },
-    include: {
-      VMImage: true,
-    },
+    where: { id: vmId, userId: req.userId },
+    include: { VMImage: true },
   });
-
   if (!vmInstance) {
-    res.status(404).json({
-      error: "VM instance not found",
-    });
+    fail(res, 404, "VM instance not found");
+    return;
+  }
+  const machineId = vmInstance.VMImage?.depinHostMachineId;
+  if (!machineId) {
+    fail(res, 400, "No host machine associated with this VM");
     return;
   }
 
   try {
-    const txn = await prisma.$transaction(async (tx) => {
-      ws.send(
-        JSON.stringify({
-          type: "end-job",
-          jobId: vmId,
-          machineId: vmInstance.VMImage?.depinHostMachineId,
-          token: jwt.sign(
-            { id: userId, machineId: vmInstance.VMImage?.depinHostMachineId },
-            process.env.JWT_SECRET || "mysecret",
-            { expiresIn: "5Mins" },
-          ),
-        }),
-      );
-      await prisma.vMInstance.update({
-        where: {
-          id: vmId,
-        },
-        data: {
-          status: "TERMINATED",
-        },
+    await prisma.$transaction(async (tx) => {
+      const token = signToken({ id: req.userId!, machineId }, "5Mins");
+      try {
+        ws.send(
+          JSON.stringify({ type: "end-job", jobId: vmId, machineId, token }),
+        );
+      } catch (e) {
+        console.error("WS send error:", e);
+      }
+      await tx.vMInstance.update({
+        where: { id: vmId },
+        data: { status: "TERMINATED" },
       });
-      const depinHost = await prisma.depinHostMachine.update({
-        where: {
-          id: vmInstance.id,
-        },
-        data: {
-          isOccupied: false,
-        },
+      const depinHost = await tx.depinHostMachine.update({
+        where: { id: vmInstance.id },
+        data: { isOccupied: false },
       });
-      activateHostQueue.add("changeVMStatus", {
+      await activateHostQueue.add("changeVMStatus", {
         id: depinHost.id,
         userPubKey: depinHost.userPublicKey,
         status: false,
       });
     });
-
-    res.status(200).json({
-      message: "Termination request sent successfully",
-    });
+    ok(res, { message: "Termination request sent successfully" });
   } catch (error) {
     console.error("Error terminating VM:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.post("/depinVerification", async (req, res) => {
   const parseData = DepinVerificationSchema.safeParse(req.body);
   if (!parseData.success) {
-    res.status(400).json({ error: parseData.error.errors });
+    fail(res, 400, "Invalid request body");
     return;
   }
+
   try {
-    const { os, cpu_cores, ram_gb, disk_gb, ip_address, wallet, Key } =
+    const { os, cpu_cores, ram_gb, disk_gb, ip_address, wallet, key } =
       parseData.data;
-    const user = await prisma.user.findFirst({
-      where: {
-        publicKey: wallet,
-      },
-    });
+    const user = await prisma.user.findFirst({ where: { publicKey: wallet } });
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      fail(res, 404, "User not found");
       return;
     }
+
     const vm = await prisma.depinHostMachine.findFirst({
-      where: {
-        ipAddress: ip_address,
-      },
+      where: { ipAddress: ip_address },
     });
     if (!vm) {
-      res.status(404).json({ error: "VM not found" });
+      fail(res, 404, "VM not found");
       return;
     }
-    const isKeyValid = await bcrypt.compare(Key, vm.Key);
+
+    const isKeyValid = await bcrypt.compare(key, vm.Key);
     if (!isKeyValid) {
-      res.status(400).json({ error: "Invalid Key" });
+      fail(res, 400, "Invalid Key");
       return;
     }
+
     if (
       vm.os !== os ||
-      vm.cpu !== cpu_cores ||
-      vm.ram !== ram_gb ||
-      vm.diskSize !== disk_gb
+      vm.cpu !== Number(cpu_cores) ||
+      vm.ram !== Number(ram_gb) ||
+      vm.diskSize !== Number(disk_gb)
     ) {
-      await prisma.depinHostMachine.delete({
-        where: { id: vm.id },
-      });
-      res.status(400).json({ error: "VM details do not match" });
+      await prisma.depinHostMachine.delete({ where: { id: vm.id } });
+      fail(res, 400, "VM details do not match");
       return;
     }
-    const pricePerHour = calculatePricePerHour(cpu_cores, ram_gb, disk_gb);
+
+    const pricePerHour = calculatePricePerHour(
+      Number(cpu_cores),
+      Number(ram_gb),
+      Number(disk_gb),
+    );
     await prisma.depinHostMachine.update({
       where: { id: vm.id },
-      data: {
-        verified: true,
-        perHourPrice: pricePerHour,
-      },
+      data: { verified: true, perHourPrice: pricePerHour },
     });
-
-    initialiseAccount.add("initialise-host-pda", {
+    await initialiseAccount.add("initialise-host-pda", {
       id: vm.id,
       hostName: user.name,
       machineType: vm.machineType,
       os: vm.os,
       diskSize: vm.diskSize,
-      pricePerHour: pricePerHour,
+      pricePerHour,
       userPubKey: wallet,
     });
-    const token = jwt.sign(
-      {
-        id: vm.id,
-        userPublicKey: wallet,
-      },
-      process.env.JWT_SECRET || "default_secret",
-    );
 
-    res
-      .status(200)
-      .json({ message: "VM verified successfully", host_id: vm.id, token });
+    const token = signToken({ id: vm.id, userPublicKey: wallet });
+    ok(res, { message: "VM verified successfully", host_id: vm.id, token });
   } catch (error) {
     console.error("Error in depin verification:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.post("/register", authMiddleware, async (req, res) => {
   const ParseData = RegisterVMSchema.safeParse(req.body);
   if (!ParseData.success) {
-    res.status(400).json({ error: ParseData.error.errors });
+    fail(res, 400, "Invalid request body");
     return;
   }
+
   try {
     const {
       machineType,
@@ -396,7 +312,6 @@ depinVM.post("/register", authMiddleware, async (req, res) => {
       os,
       Key,
     } = ParseData.data;
-
     const vm = await prisma.depinHostMachine.create({
       data: {
         machineType,
@@ -410,134 +325,116 @@ depinVM.post("/register", authMiddleware, async (req, res) => {
         Key: bcrypt.hashSync(Key, 10),
       },
     });
-    res.status(200).json({ message: "VM registered successfully", vm });
+    ok(res, { message: "VM registered successfully", vm });
   } catch (error) {
     console.error("Error registering VM:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.post("/changeVisibility", authMiddleware, async (req, res) => {
   const parseData = ChangeVMStatusSchema.safeParse(req.body);
   if (!parseData.success) {
-    res.status(400).json({ error: parseData.error.errors });
+    fail(res, 400, "Invalid request body");
     return;
   }
+
   const { id, pubKey, status, Key } = parseData.data;
   try {
     const vm = await prisma.depinHostMachine.findFirst({
-      where: {
-        id,
-        userPublicKey: pubKey,
-      },
+      where: { id, userPublicKey: pubKey },
     });
     if (!vm) {
-      res.status(404).json({ error: "VM not found" });
+      fail(res, 404, "VM not found");
       return;
     }
+
     const isKeyValid = await bcrypt.compare(Key, vm.Key);
     if (!isKeyValid) {
-      res.status(400).json({ error: "Invalid Key" });
+      fail(res, 400, "Invalid Key");
       return;
     }
+
     await prisma.depinHostMachine.update({
-      where: {
-        id,
-        userPublicKey: pubKey,
-      },
+      where: { id, userPublicKey: pubKey },
       data: { isActive: status },
     });
-    res.status(200).json({ message: "VM visibility updated successfully" });
+    ok(res, { message: "VM visibility updated successfully" });
   } catch (error) {
     console.error("Error fetching VM:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.get("/getAll", authMiddleware, async (req, res) => {
   const userPublicKey = req.query.userPublicKey as string;
   if (!userPublicKey) {
-    res.status(400).json({ error: "User public key is required" });
+    fail(res, 400, "User public key is required");
     return;
   }
+
   try {
     const vms = await prisma.depinHostMachine.findMany({
-      where: {
-        userPublicKey: userPublicKey,
-      },
+      where: { userPublicKey },
     });
-    res.status(200).json(vms);
+    ok(res, vms);
   } catch (error) {
     console.error("Error fetching VMs:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.get("/getById", authMiddleware, async (req, res) => {
   const id = req.query.id as string;
   if (!id) {
-    res.status(400).json({ error: "VM ID is required" });
+    fail(res, 400, "VM ID is required");
     return;
   }
+
   try {
-    const vm = await prisma.depinHostMachine.findFirst({
-      where: { id },
-    });
+    const vm = await prisma.depinHostMachine.findFirst({ where: { id } });
     if (!vm) {
-      res.status(404).json({ error: "VM not found" });
+      fail(res, 404, "VM not found");
       return;
     }
-    res.status(200).json(vm);
+    ok(res, vm);
   } catch (error) {
     console.error("Error fetching VM:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
 depinVM.post("/claimSOL", authMiddleware, async (req, res) => {
   const parseData = ClaimSOLSchema.safeParse(req.body);
   if (!parseData.success) {
-    res.status(400).json({ error: parseData.error.errors });
+    fail(res, 400, "Invalid request body");
     return;
   }
-  try {
-    const { id, pubKey, amount } = parseData.data;
 
+  try {
+    const { id, pubKey } = parseData.data;
     const vm = await prisma.depinHostMachine.findFirst({
-      where: {
-        id,
-        userPublicKey: pubKey,
-      },
+      where: { id, userPublicKey: pubKey },
     });
     if (!vm) {
-      res.status(404).json({ error: "VM not found" });
+      fail(res, 404, "VM not found");
       return;
     }
     if (vm.isActive) {
-      res.status(400).json({ error: "Cannot claim SOL while VM is active" });
+      fail(res, 400, "Cannot claim SOL while VM is active");
       return;
     }
 
-    await prisma.depinHostMachine.update({
-      where: {
-        id,
-        userPublicKey: pubKey,
-      },
-      data: {
-        claimedSOL: { increment: amount },
-      },
+    await claimRewardsQueue.add("claim-rewards", {
+      id: vm.id,
+      userPubKey: pubKey,
     });
-
-    res.status(200).json({ message: "SOL claimed successfully" });
+    ok(res, { message: "Claim request submitted" });
   } catch (error) {
     console.error("Error claiming SOL:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    fail(res, 500, "Internal server error");
   }
 });
 
+const MINUTE_MS = 60 * 1000;
 export default depinVM;

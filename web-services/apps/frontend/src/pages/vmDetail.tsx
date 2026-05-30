@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { type VM } from "../../types/vm";
@@ -22,6 +22,8 @@ export function VMDetails() {
 
   // Real-time status updates for this VM
   useIndexerEvents({
+    account: wallet?.publicKey?.toBase58(),
+    instruction: undefined,
     onEvent: (event) => {
       const eventId = event.args?.id as string;
       if (eventId !== id) return;

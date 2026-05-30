@@ -120,7 +120,6 @@ export function useIndexerEvents(opts?: {
         if (listeners.size === 0 && subscribedPubkeys.size === 0) disconnect();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts?.instruction, opts?.account]);
 
   return lastEvent;

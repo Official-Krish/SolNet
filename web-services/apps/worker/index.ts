@@ -1,15 +1,20 @@
 import { Worker } from "bullmq";
 import compute from "@google-cloud/compute";
-import prisma from "@decloud/db";
-import { redisConnection as connection } from "@decloud/utilities/redis";
+import prisma from "@axion/db";
+import { redisConnection as connection } from "@axion/utilities/redis";
 import {
   activateHost,
+  claimRewards,
   deActivateHost,
   endRentalSession,
   InitialiseHostPDA,
+  penalizeHost,
+  settleDepinJob,
 } from "./contract";
 
 const projectId = process.env.PROJECT_ID;
+const PLATFORM_VAULT_PUBKEY = process.env.PLATFORM_VAULT_PUBKEY || "";
+const PLATFORM_FEE_BPS = Number(process.env.PLATFORM_FEE_BPS || "1000"); // default 10%
 
 const ws = new WebSocket(process.env.WS_URL || "ws://localhost:8080");
 
@@ -152,18 +157,15 @@ const terminateDepinVm = new Worker(
 
     try {
       const findVm = await prisma.depinHostMachine.findFirst({
-        where: {
-          id: id,
-        },
-        include: {
-          VMImage: true,
-        },
+        where: { id },
+        include: { VMImage: true },
       });
       if (!findVm) {
         console.error(`No VM found with ID ${id}`);
         return;
       }
 
+      // Send end-job to host agent
       ws.send(
         JSON.stringify({
           type: "end-job",
@@ -171,8 +173,61 @@ const terminateDepinVm = new Worker(
           jobId: findVm.VMImage?.id,
         }),
       );
-      await endRentalSession(findVm.id, pubKey, true);
-      await deActivateHost(findVm.id, findVm.userPublicKey);
+
+      // Find the VM instance to calculate uptime
+      const vmInstance = await prisma.vMInstance.findFirst({
+        where: { id: findVm.VMImage?.id },
+      });
+
+      if (vmInstance) {
+        const uptimeMs = Date.now() - new Date(vmInstance.startTime).getTime();
+        const uptimeHours = uptimeMs / (1000 * 60 * 60);
+        const hostEarned = Math.floor(uptimeHours * findVm.perHourPrice * 1e9); // lamports
+        const totalMs =
+          new Date(vmInstance.endTime).getTime() -
+          new Date(vmInstance.startTime).getTime();
+
+        // Settle: host gets paid, platform gets cut, renter gets refund
+        const tx = await settleDepinJob(
+          vmInstance.id,
+          pubKey,
+          findVm.userPublicKey,
+          hostEarned,
+          PLATFORM_FEE_BPS,
+          PLATFORM_VAULT_PUBKEY,
+        );
+
+        const platformFee = (hostEarned * PLATFORM_FEE_BPS) / 10000;
+        const hostPayout = hostEarned - platformFee;
+        const escrowLamports = vmInstance.price * 1e9;
+        const renterRefund = Math.max(0, escrowLamports - hostEarned);
+
+        await prisma.depinSettlement.create({
+          data: {
+            hostMachineId: findVm.id,
+            renterPubKey: pubKey,
+            jobId: vmInstance.id,
+            hostEarned: hostPayout / 1e9,
+            platformFee: platformFee / 1e9,
+            renterRefund: renterRefund / 1e9,
+            uptimeSeconds: Math.floor(uptimeMs / 1000),
+            totalSeconds: Math.floor(totalMs / 1000),
+            txSignature: tx,
+          },
+        });
+
+        await prisma.vMInstance.update({
+          where: { id: vmInstance.id },
+          data: { status: "DELETED" },
+        });
+      }
+
+      await prisma.depinHostMachine.update({
+        where: { id: findVm.id },
+        data: { isOccupied: false },
+      });
+
+      console.log(`DePIN job ${id} settled successfully`);
     } catch (error) {
       console.error(
         `Error processing terminate depin VM job ${job.id}:`,
@@ -180,9 +235,7 @@ const terminateDepinVm = new Worker(
       );
     }
   },
-  {
-    connection,
-  },
+  { connection },
 );
 
 terminateDepinVm.on("completed", (job) => {
@@ -203,3 +256,53 @@ async function deleteInstance(zone: string, instanceId: string) {
 
   return true;
 }
+
+const claimRewardsWorker = new Worker(
+  "claim-rewards",
+  async (job) => {
+    const { id, userPubKey } = job.data;
+    try {
+      const tx = await claimRewards(id, userPubKey);
+      if (!tx) {
+        console.error(`Failed to claim rewards for ${id}`);
+        return;
+      }
+      console.log(`Rewards claimed for ${id}: ${tx}`);
+    } catch (error) {
+      console.error(`Error claiming rewards for ${id}:`, error);
+    }
+  },
+  { connection },
+);
+
+claimRewardsWorker.on("completed", (job) => {
+  console.log(`Claim rewards job completed: ${job.id}`);
+});
+claimRewardsWorker.on("failed", (job, err) => {
+  console.error(`Claim rewards job ${job?.id} failed: ${err.message}`);
+});
+
+const penalizeHostWorker = new Worker(
+  "penalize-host",
+  async (job) => {
+    const { id, userPubKey } = job.data;
+    try {
+      const tx = await penalizeHost(id, userPubKey);
+      if (!tx) {
+        console.error(`Failed to penalize host ${id}`);
+        return;
+      }
+      console.log(`Host ${id} penalized: ${tx}`);
+    } catch (error) {
+      console.error(`Error penalizing host ${id}:`, error);
+    }
+  },
+  { connection },
+);
+
+penalizeHostWorker.on("completed", (job) => {
+  console.log(`Penalize host job completed: ${job.id}`);
+});
+penalizeHostWorker.on("failed", (job, err) => {
+  console.error(`Penalize host job ${job?.id} failed: ${err.message}`);
+});

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { motion, useMotionValueEvent, useScroll } from "framer-motion";
+import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocation } from "react-router-dom";
 import ProfileDropdown from "./user-dropdown";

@@ -37,8 +37,10 @@ pub fn deactivate_host(
         DepinErrors::HostMachineRegistrationNotActiveLongEnough
     );
     let time = (timestamp - host_machine.started_at) as u64;
-    let reward = (time / 3600).checked_mul(host_machine.sol_per_hour)
-        .ok_or(Errors::ArithmeticOverflow)?;
+    let reward = time
+        .checked_mul(host_machine.sol_per_hour)
+        .ok_or(Errors::ArithmeticOverflow)?
+        / 3600;
     host_machine.earned = host_machine.earned.checked_add(reward)
         .ok_or(Errors::ArithmeticOverflow)?;
     host_machine.started_at = 0; 

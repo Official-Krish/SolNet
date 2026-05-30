@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../generated/prisma"
 }
 
@@ -109,15 +109,38 @@ model DepinHostMachine {
   pdaAddress    String?
   perHourPrice  Float       @default(0)
   claimedSOL    Float?      @default(0)
+  lastHeartbeat DateTime?
+  totalEarned   Float       @default(0)
+  platformFeeEarned Float   @default(0)
   createdAt     DateTime    @default(now())
   user          User?       @relation(fields: [userPublicKey], references: [publicKey])
   VMImage       VMImage?
+  settlements   DepinSettlement[]
 
   @@index([machineType])
   @@index([region])
   @@index([isActive])
   @@index([verified])
   @@index([userPublicKey])
+}
+
+model DepinSettlement {
+  id              String   @id @default(cuid())
+  hostMachineId   String
+  renterPubKey    String
+  jobId           String
+  hostEarned      Float
+  platformFee     Float
+  renterRefund    Float
+  uptimeSeconds   Int
+  totalSeconds    Int
+  txSignature     String?
+  createdAt       DateTime @default(now())
+
+  hostMachine     DepinHostMachine @relation(fields: [hostMachineId], references: [id])
+
+  @@index([hostMachineId])
+  @@index([jobId])
 }
 
 enum VMProvider {

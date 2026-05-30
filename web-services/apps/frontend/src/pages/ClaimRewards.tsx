@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
-import { useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { Link } from "react-router-dom";
 import { type Machine } from "../../types/depinMachines";
 import { BACKEND_URL } from "@/config";
-import { claimSolana } from "@/lib/depin";
 import { toast } from "sonner";
 import axios from "axios";
-import { useTxConfirm } from "@/lib/useTxConfirm";
 
 // per-machine claim status
 type ClaimStatus = "idle" | "submitted" | "confirmed" | "failed";
@@ -97,8 +95,6 @@ function MachineRow({
 
 export default function ClaimRewards() {
   const wallet = useWallet();
-  const anchorWallet = useAnchorWallet();
-  const { watch } = useTxConfirm(wallet.publicKey?.toBase58());
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   // per-machine claim status
@@ -122,30 +118,19 @@ export default function ClaimRewards() {
     setClaimStatuses((p) => ({ ...p, [id]: s }));
 
   const handleClaim = async (id: string) => {
-    if (!anchorWallet) return;
+    if (!wallet.publicKey) return;
     setStatus(id, "submitted");
     try {
-      const r = await claimSolana(anchorWallet, id);
-      if (!r?.success || !r.signature) {
-        setStatus(id, "failed");
-        toast.error("Claim failed");
-        return;
+      const res = await axios.post(
+        `${BACKEND_URL}/user/depin/claimSOL`,
+        { id, pubKey: wallet.publicKey.toBase58() },
+        { headers: { Authorization: `${localStorage.getItem("token")}` } },
+      );
+      if (res.status === 200) {
+        setStatus(id, "confirmed");
+        toast.success("Claim submitted. Rewards will arrive shortly.");
+        setTimeout(() => setStatus(id, "idle"), 3000);
       }
-      watch(r.signature, {
-        onConfirmed: () => {
-          setStatus(id, "confirmed");
-          toast.success(`Claimed · ${r.signature.slice(0, 8)}…`);
-          setMachines((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, claimedSOL: 0 } : m)),
-          );
-          setTimeout(() => setStatus(id, "idle"), 3000);
-        },
-        onFailed: () => {
-          setStatus(id, "failed");
-          toast.error("Claim transaction failed on-chain");
-          setTimeout(() => setStatus(id, "idle"), 3000);
-        },
-      });
     } catch (e: unknown) {
       setStatus(id, "failed");
       toast.error(e instanceof Error ? e.message : "Claim failed");

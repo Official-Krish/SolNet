@@ -89,24 +89,16 @@ export const ChangeVMStatusSchema = z.object({
 export const ClaimSOLSchema = z.object({
   id: z.string(),
   pubKey: z.string(),
-  amount: z.number().positive(),
-  Key: z
-    .string()
-    .min(8)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/),
 });
 
 export const DepinVerificationSchema = z.object({
   os: z.string(),
-  cpu_cores: z.number().int().positive(),
-  ram_gb: z.number().int().positive(),
-  disk_gb: z.number().int().positive(),
+  cpu_cores: z.union([z.number(), z.string()]).transform(Number),
+  ram_gb: z.union([z.number(), z.string()]).transform(Number),
+  disk_gb: z.union([z.number(), z.string()]).transform(Number),
   ip_address: z.string(),
   wallet: z.string(),
-  Key: z
-    .string()
-    .min(8)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/),
+  key: z.string().min(1),
 });
 
 export const FindVmSchema = z.object({

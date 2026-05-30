@@ -1,5 +1,5 @@
 {
-  "name": "ws-relayer",
+  "name": "@axion/ws-relayer",
   "module": "index.ts",
   "type": "module",
   "private": true,

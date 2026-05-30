@@ -1,5 +1,5 @@
 {
-  "name": "@decloud/worker",
+  "name": "@axion/worker",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@decloud/db": "workspace:*"
+    "@axion/db": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"

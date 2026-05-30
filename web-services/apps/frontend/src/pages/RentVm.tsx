@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 import type { FinalConfig, VMTypes } from "types/vm";

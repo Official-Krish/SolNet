@@ -1,5 +1,5 @@
 {
-  "name": "depin-ws-realyer",
+  "name": "@axion/depin-ws-relayer",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -9,7 +9,8 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@decloud/db": "workspace:*"
+    "@axion/db": "workspace:*",
+    "@axion/utilities": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"

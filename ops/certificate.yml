@@ -1,41 +1,41 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: decloud-backend-cert
-  namespace: decloud
+  name: axion-backend-cert
+  namespace: axion
 spec:
-  secretName: decloud-backend-tls
+  secretName: axion-backend-tls
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: api.decloud.krishlabs.tech
+  commonName: api.axion.krishlabs.tech
   dnsNames:
-  - api.decloud.krishlabs.tech
+  - api.axion.krishlabs.tech
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: decloud-ws-relayer-cert
-  namespace: decloud
+  name: axion-ws-relayer-cert
+  namespace: axion
 spec:
-  secretName: decloud-ws-relayer-tls
+  secretName: axion-ws-relayer-tls
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: wss.decloud.krishlabs.tech
+  commonName: wss.axion.krishlabs.tech
   dnsNames:
-  - wss.decloud.krishlabs.tech
+  - wss.axion.krishlabs.tech
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: decloud-depin-ws-relayer-cert
-  namespace: decloud
+  name: axion-depin-ws-relayer-cert
+  namespace: axion
 spec:
-  secretName: decloud-depin-ws-relayer-tls
+  secretName: axion-depin-ws-relayer-tls
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: wss.depin.decloud.krishlabs.tech
+  commonName: wss.depin.axion.krishlabs.tech
   dnsNames:
-  - wss.depin.decloud.krishlabs.tech
+  - wss.depin.axion.krishlabs.tech

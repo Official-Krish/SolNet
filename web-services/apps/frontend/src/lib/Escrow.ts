@@ -1,15 +1,17 @@
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getAdminPublicKey, SECRET_KEY } from "@/config";
-import { Contarct } from "./contract";
+import { getAdminPublicKey } from "@/config";
+import { getContract } from "./contract";
+
+const VAULT_SEED = "axion_vault";
 
 export const StartRentalSessionWithEscrow = async (
   wallet: AnchorWallet,
   amount: number,
   id: string,
 ) => {
-  const program = Contarct(wallet);
+  const program = getContract(wallet);
   try {
     const tx = await program.methods
       .startRentalWithEscrow(new BN(amount * LAMPORTS_PER_SOL), id)
@@ -33,7 +35,7 @@ export const TopUpEscrowSession = async (
   id: string,
   amount: number,
 ) => {
-  const program = Contarct(wallet);
+  const program = getContract(wallet);
   try {
     const tx = await program.methods
       .topUpEscrow(id, new BN(amount * LAMPORTS_PER_SOL))
@@ -57,13 +59,13 @@ export const FinalizeRentalWithEscrow = async (
   id: string,
   amount: number,
 ) => {
-  const program = Contarct(wallet);
+  const program = getContract(wallet);
   try {
     const tx = await program.methods
       .finaliseRentalWithEscrow(
         id,
         new BN(amount * LAMPORTS_PER_SOL),
-        SECRET_KEY,
+        VAULT_SEED,
       )
       .accounts({ user: wallet.publicKey, admin: getAdminPublicKey() })
       .rpc();

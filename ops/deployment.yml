@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: decloud-frontend
-  namespace: decloud
+  name: axion-frontend
+  namespace: axion
   labels:
-    app: decloud-frontend
+    app: axion-frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: decloud-frontend
+      app: axion-frontend
   template:
     metadata:
       labels:
-        app: decloud-frontend
+        app: axion-frontend
     spec:
       containers:
-        - name: decloud-frontend
-          image: krishanand01/decloud-frontend:v2.2
+        - name: axion-frontend
+          image: krishanand01/axion-frontend:v2.2
           ports:
             - containerPort: 5173
           volumeMounts:
@@ -27,28 +27,28 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: decloud-frontend-env
+            secretName: axion-frontend-env
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: decloud-backend
-  namespace: decloud
+  name: axion-backend
+  namespace: axion
   labels:
-    app: decloud-backend
+    app: axion-backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: decloud-backend
+      app: axion-backend
   template:
     metadata:
       labels:
-        app: decloud-backend
+        app: axion-backend
     spec:
       containers:
-        - name: decloud-backend
-          image: krishanand01/decloud-backend:v2.1
+        - name: axion-backend
+          image: krishanand01/axion-backend:v2.1
           ports:
             - containerPort: 3000
           volumeMounts:
@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: decloud-backend-env
+            secretName: axion-backend-env
         - name: gcp-key-volume
           secret:
             secretName: gcp-key-secret
@@ -71,23 +71,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: decloud-worker
-  namespace: decloud
+  name: axion-worker
+  namespace: axion
   labels:
-    app: decloud-worker
+    app: axion-worker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: decloud-worker
+      app: axion-worker
   template:
     metadata:
       labels:
-        app: decloud-worker
+        app: axion-worker
     spec:
       containers:
-        - name: decloud-worker
-          image: krishanand01/decloud-worker:v2.1
+        - name: axion-worker
+          image: krishanand01/axion-worker:v2.1
           volumeMounts:
             - name: env-file
               mountPath: /app/apps/worker/.env
@@ -98,7 +98,7 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: decloud-worker-env
+            secretName: axion-worker-env
         - name: gcp-key-volume
           secret:
             secretName: gcp-key-secret
@@ -106,23 +106,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: decloud-ws-relayer
-  namespace: decloud
+  name: axion-ws-relayer
+  namespace: axion
   labels:
-    app: decloud-ws-relayer
+    app: axion-ws-relayer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: decloud-ws-relayer
+      app: axion-ws-relayer
   template:
     metadata:
       labels:
-        app: decloud-ws-relayer
+        app: axion-ws-relayer
     spec:
       containers:
-        - name: decloud-ws-relayer
-          image: krishanand01/decloud-ws-relayer:v1.1
+        - name: axion-ws-relayer
+          image: krishanand01/axion-ws-relayer:v1.1
           ports:
             - containerPort: 9093
           volumeMounts:
@@ -132,28 +132,28 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: decloud-ws-relayer-env
+            secretName: axion-ws-relayer-env
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: decloud-depin-ws-relayer
-  namespace: decloud
+  name: axion-depin-ws-relayer
+  namespace: axion
   labels:
-    app: decloud-depin-ws-relayer
+    app: axion-depin-ws-relayer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: decloud-depin-ws-relayer
+      app: axion-depin-ws-relayer
   template:
     metadata:
       labels:
-        app: decloud-depin-ws-relayer
+        app: axion-depin-ws-relayer
     spec:
       containers:
-        - name: decloud-depin-ws-relayer
-          image: krishanand01/decloud-depin-ws-relayer:v2.1
+        - name: axion-depin-ws-relayer
+          image: krishanand01/axion-depin-ws-relayer:v2.1
           ports:
             - containerPort: 8080
 ---
@@ -161,7 +161,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
-  namespace: decloud
+  namespace: axion
 spec:
   replicas: 1
   selector:

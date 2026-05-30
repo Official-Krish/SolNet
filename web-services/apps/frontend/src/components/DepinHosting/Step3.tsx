@@ -9,7 +9,7 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
-import { onboardingScript } from "./constants/scripts";
+import { startScript } from "./constants/scripts";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 
@@ -183,7 +183,7 @@ export const Step3 = () => {
             start accumulating.
           </p>
 
-          <CodeBlock script={onboardingScript} />
+          <CodeBlock script={startScript} />
         </Card>
       </motion.div>
 

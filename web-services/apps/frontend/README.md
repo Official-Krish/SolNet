@@ -1,4 +1,4 @@
-# `@decloud/frontend` — React SPA
+# `@Axion/frontend` — React SPA
 
 React 19 + TypeScript + Vite 7 SPA with TailwindCSS 4, shadcn/ui, and Framer Motion. Integrates Solana wallet (WalletAdapter) and real-time WebSocket updates.
 

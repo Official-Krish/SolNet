@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "../ui/dialog";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { toast } from "sonner";
 import axios from "axios";
 import { BACKEND_URL } from "@/config";

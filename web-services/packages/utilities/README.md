@@ -1,4 +1,4 @@
-# `@decloud/utilities` — Shared Utilities
+# `@Axion/utilities` — Shared Utilities
 
 Common utilities shared across backend and worker apps.
 
@@ -12,6 +12,6 @@ Common utilities shared across backend and worker apps.
 ## Usage
 
 ```ts
-import { authMiddleware } from "@decloud/utilities";
-import { redisConnection } from "@decloud/utilities/redis";
+import { authMiddleware } from "@Axion/utilities";
+import { redisConnection } from "@Axion/utilities/redis";
 ```

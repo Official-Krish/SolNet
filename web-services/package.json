@@ -1,10 +1,10 @@
 {
-  "name": "web-services",
+  "name": "@axion/web-services",
   "private": true,
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint --filter=!@decloud/worker",
+    "lint": "turbo run lint --filter=!@axion/worker",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "prisma:generate": "cd ./packages/db && bunx prisma generate && cd ../..",

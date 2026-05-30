@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ingress-nginx
-  namespace: decloud
+  namespace: axion
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"  
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"  
@@ -12,56 +12,56 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - api.decloud.krishlabs.tech
-      secretName: decloud-backend-tls
+        - api.axion.krishlabs.tech
+      secretName: axion-backend-tls
     - hosts:
-        - wss.decloud.krishlabs.tech
-      secretName: decloud-ws-relayer-tls
+        - wss.axion.krishlabs.tech
+      secretName: axion-ws-relayer-tls
     - hosts:
-        - wss.depin.decloud.krishlabs.tech
-      secretName: decloud-depin-ws-relayer-tls
+        - wss.depin.axion.krishlabs.tech
+      secretName: axion-depin-ws-relayer-tls
 
   rules:
-    - host: decloud.krishlabs.tech
+    - host: axion.krishlabs.tech
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: decloud-frontend
+                name: axion-frontend
                 port:
                   number: 80
 
-    - host: api.decloud.krishlabs.tech
+    - host: api.axion.krishlabs.tech
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: decloud-backend
+                name: axion-backend
                 port:
                   number: 80
-    - host: wss.decloud.krishlabs.tech
+    - host: wss.axion.krishlabs.tech
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: decloud-ws-relayer
+                name: axion-ws-relayer
                 port:
                   number: 80
 
-    - host: wss.depin.decloud.krishlabs.tech
+    - host: wss.depin.axion.krishlabs.tech
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: decloud-depin-ws-relayer
+                name: axion-depin-ws-relayer
                 port:
                   number: 80
 ---

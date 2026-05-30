@@ -1,56 +1,38 @@
 import "dotenv/config";
 import { Router } from "express";
-import { authMiddleware } from "../utils/middleware";
-import { VmInstanceSchema } from "@decloud/types";
-import prisma from "@decloud/db";
+import { authMiddleware } from "@axion/utilities/auth";
+import { VmInstanceSchema } from "@axion/types";
+import prisma from "@axion/db";
 import { createInstance } from "../utils/createVm";
-import { deleteInstance } from "../utils/delteVm";
+import { deleteInstance } from "../utils/deleteVm";
 import compute from "@google-cloud/compute";
 import { vmQueue } from "../redis";
-import jwt from "jsonwebtoken";
-
-const MINUTE_MS = 60 * 1000;
-const TWELVE_HOURS_MS = 12 * 60 * MINUTE_MS;
+import {
+  fail,
+  getUserOr404,
+  ok,
+  signToken,
+  MINUTE_MS,
+  TWELVE_HOURS_MS,
+} from "../utils/helpers";
 
 const vmInstance = Router();
 const instancesClient = new compute.InstancesClient();
 
 vmInstance.post("/create", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    res.status(400).json({
-      error: "User ID is required",
-    });
-    return;
-  }
   const parsedBody = VmInstanceSchema.safeParse(req.body);
   if (!parsedBody.success) {
-    res.status(400).json({
-      error: "Invalid request body",
-    });
+    fail(res, 400, "Invalid request body");
     return;
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-    },
-  });
-  if (!user) {
-    res.status(404).json({
-      error: "User not found",
-    });
-    return;
-  }
+  const user = await getUserOr404(res, req.userId);
+  if (!user) return;
 
   if (user.timeoutAt) {
-    const userTimeout =
-      new Date().getTime() - new Date(user.timeoutAt).getTime();
-
-    if (userTimeout < TWELVE_HOURS_MS) {
-      res.status(403).json({
-        error: "You can only create a VM once every 12 hours",
-      });
+    const elapsed = Date.now() - new Date(user.timeoutAt).getTime();
+    if (elapsed < TWELVE_HOURS_MS) {
+      fail(res, 403, "You can only create a VM once every 12 hours");
       return;
     }
   }
@@ -69,24 +51,16 @@ vmInstance.post("/create", authMiddleware, async (req, res) => {
     } = parsedBody.data;
     const DEFAULT_RENTAL_DURATION_MINUTES = 10;
     const endTime = DEFAULT_RENTAL_DURATION_MINUTES;
-    const existingVm = await prisma.vMInstance.findFirst({
-      where: {
-        name,
-        userId,
-        status: {
-          not: "DELETED",
-        },
-      },
-    });
 
+    const existingVm = await prisma.vMInstance.findFirst({
+      where: { name, userId: req.userId, status: { not: "DELETED" } },
+    });
     if (existingVm) {
-      res.status(409).json({
-        error: "VM with this name already exists",
-      });
+      fail(res, 409, "VM with this name already exists");
       return;
     }
-    const response = await createInstance(name, region, machineType, "10", os);
 
+    const response = await createInstance(name, region, machineType, "10", os);
     const transaction = await prisma.$transaction(async (tx) => {
       const job = await vmQueue.add(
         "terminate-vm",
@@ -95,15 +69,14 @@ vmInstance.post("/create", authMiddleware, async (req, res) => {
           zone: region,
           pubKey: user.publicKey,
           isEscrow: paymentType === "ESCROW",
-          id: id,
+          id,
         },
-        {
-          delay: endTime * MINUTE_MS,
-        },
+        { delay: endTime * MINUTE_MS },
       );
-      const vm = await prisma.vMInstance.create({
+
+      const vm = await tx.vMInstance.create({
         data: {
-          id: id,
+          id,
           name,
           jobId: job.id || id,
           PaymentType: paymentType,
@@ -113,27 +86,18 @@ vmInstance.post("/create", authMiddleware, async (req, res) => {
           price,
           provider,
           startTime: new Date(),
-          userId,
-          instanceId: (response.instanceId as unknown as string) ?? "unknown",
+          userId: req.userId!,
+          instanceId: response.instanceId ?? "unknown",
           publicKey: response.publicKey,
           status: "RUNNING",
         },
       });
-      await prisma.vMConfig.create({
-        data: {
-          os,
-          machineType,
-          diskSize: diskSize,
-          vmId: vm.id,
-        },
+      await tx.vMConfig.create({
+        data: { os, machineType, diskSize, vmId: vm.id },
       });
-      await prisma.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          timeoutAt: new Date(),
-        },
+      await tx.user.update({
+        where: { id: req.userId! },
+        data: { timeoutAt: new Date() },
       });
       return {
         vm,
@@ -143,232 +107,142 @@ vmInstance.post("/create", authMiddleware, async (req, res) => {
       };
     });
 
-    const AuthToken = jwt.sign(
+    const AuthToken = signToken(
       {
-        userId,
-        allowedVms: transaction.vm.ipAddress,
+        userId: req.userId!,
+        allowedVms: transaction.vm.ipAddress!,
         privateKey: transaction.privateKey,
       },
-      process.env.JWT_SECRET || "my-secret",
-      {
-        expiresIn: Math.floor(Number(endTime) * MINUTE_MS),
-      },
+      Math.floor(Number(endTime) * MINUTE_MS),
     );
 
-    res.status(200).json({
+    ok(res, {
       message: "VM instance created successfully",
       vmId: transaction.vm.id,
       instanceId: transaction.instanceId,
       ip: transaction.ipAddress,
-      AuthToken: AuthToken,
+      AuthToken,
       PrivateKey: transaction.privateKey,
     });
   } catch (error) {
     console.error("Error during VM instance creation:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 vmInstance.get("/pollStatus", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    res.status(400).json({
-      error: "User ID is required",
-    });
-    return;
-  }
   const instanceId = req.query.instanceId as string;
   const vmId = req.query.id as string;
   if (!instanceId || !vmId) {
-    res.status(400).json({
-      error: `ID is required`,
-    });
+    fail(res, 400, "ID is required");
     return;
   }
 
   try {
     const vmInstance = await prisma.vMInstance.findUnique({
-      where: {
-        id: vmId,
-        instanceId: instanceId,
-      },
+      where: { id: vmId, instanceId },
     });
     if (!vmInstance) {
-      res.status(404).json({
-        error: "VM instance not found",
-      });
+      fail(res, 404, "VM instance not found");
       return;
     }
+
     const operationsClient = new compute.ZoneOperationsClient();
     await operationsClient.wait({
       operation: vmInstance.instanceId,
       project: process.env.PROJECT_ID,
       zone: vmInstance.region,
     });
-
     const [instance] = await instancesClient.get({
       project: process.env.PROJECT_ID,
       zone: vmInstance.region,
       instance: vmInstance.instanceId,
     });
-
     const status = instance.status;
     if (!status) {
-      res.status(404).json({
-        error: "VM instance not found",
-      });
+      fail(res, 404, "VM instance not found");
       return;
     }
 
     await prisma.vMInstance.update({
-      where: {
-        id: vmId,
-        instanceId: instanceId,
-      },
-      data: {
-        status: status,
-      },
+      where: { id: vmId, instanceId },
+      data: { status },
     });
-    res.status(200).json({
-      vmId,
-      status,
-    });
+    ok(res, { vmId, status });
   } catch (e) {
     console.error("Error during VM status polling:", e);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 vmInstance.delete("/destroy", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    res.status(400).json({
-      error: "User ID is required",
-    });
-    return;
-  }
   const instanceId = req.query.instanceId as string;
   const vmId = req.query.vmId as string;
   const zone = req.query.zone as string;
   if (!instanceId || !vmId || !zone) {
-    res.status(400).json({
-      error: "instance Id, VM ID, and zone are required",
-    });
+    fail(res, 400, "instance Id, VM ID, and zone are required");
     return;
   }
 
   try {
     const vmInstance = await prisma.vMInstance.findFirst({
-      where: {
-        id: vmId,
-        instanceId: instanceId,
-      },
+      where: { id: vmId, instanceId },
     });
     if (!vmInstance) {
-      res.status(404).json({
-        error: "VM instance not found",
-      });
+      fail(res, 404, "VM instance not found");
       return;
     }
+
     const remainingTime = vmInstance.endTime.getTime() - Date.now();
     await deleteInstance(zone, instanceId);
-
     await prisma.vMInstance.update({
-      where: {
-        id: vmId,
-        instanceId: instanceId,
-      },
-      data: {
-        status: "DELETED",
-      },
+      where: { id: vmId, instanceId },
+      data: { status: "DELETED" },
     });
-
-    res.status(200).json({
+    ok(res, {
       message: "VM instance deleted successfully",
       remainingTime: remainingTime > 0 ? remainingTime : 0,
     });
   } catch (error) {
     console.error("Error during VM instance deletion:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 vmInstance.get("/getAll", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    res.status(400).json({
-      error: "User ID is required",
-    });
-    return;
-  }
   try {
     const vms = await prisma.vMInstance.findMany({
-      where: {
-        userId,
-      },
-      include: {
-        VMConfig: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { userId: req.userId },
+      include: { VMConfig: true },
+      orderBy: { createdAt: "desc" },
     });
-    res.status(200).json({
-      vms,
-    });
+    ok(res, { vms });
   } catch (error) {
     console.error("Error fetching VM instances:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 
 vmInstance.get("/getDetails", authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    res.status(400).json({
-      error: "User ID is required",
-    });
-    return;
-  }
   const id = req.query.id as string;
   if (!id) {
-    res.status(400).json({
-      error: "VM ID is required",
-    });
+    fail(res, 400, "VM ID is required");
     return;
   }
 
   try {
     const vmInstance = await prisma.vMInstance.findFirst({
-      where: {
-        id: id,
-      },
-      include: {
-        VMConfig: true,
-      },
+      where: { id },
+      include: { VMConfig: true },
     });
     if (!vmInstance) {
-      res.status(404).json({
-        error: "VM instance not found",
-      });
+      fail(res, 404, "VM instance not found");
       return;
     }
-    res.status(200).json({
-      vmInstance,
-    });
+    ok(res, { vmInstance });
   } catch (error) {
     console.error("Error fetching VM instance details:", error);
-    res.status(500).json({
-      error: "Internal server error",
-    });
+    fail(res, 500, "Internal server error");
   }
 });
 

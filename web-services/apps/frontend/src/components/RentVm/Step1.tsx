@@ -1,5 +1,5 @@
 import type { VMTypes } from "types/vm";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   Card,
   CardHeader,

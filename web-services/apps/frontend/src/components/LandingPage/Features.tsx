@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Zap, Shield, Globe, Code2, Server, Coins } from "lucide-react";
 
 const features = [

@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   Card,
   CardHeader,
@@ -55,7 +55,7 @@ const STATUS_LABEL: Record<TxStatus, string> = {
   failed: "Transaction failed",
 };
 
-export const PayementGateway = ({
+export const PaymentGateway = ({
   escrowAmount,
   setEscrowAmount,
   form,
