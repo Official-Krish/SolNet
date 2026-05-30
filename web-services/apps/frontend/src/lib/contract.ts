@@ -8,7 +8,9 @@ import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import idl from "../../idl/contract.json";
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";
-import { getAdminPublicKey, SECRET_KEY } from "@/config";
+import { getAdminPublicKey } from "@/config";
+
+const VAULT_SEED = "axion_vault";
 
 export function getContract(wallet: AnchorWallet): Program {
   if (!wallet) throw new Error("Wallet not connected");
@@ -94,7 +96,7 @@ export const transferFromVault = async (
     const result = await sendAndConfirm(
       program,
       program.methods
-        .transferFromVault(new BN(amount * LAMPORTS_PER_SOL), id, SECRET_KEY)
+        .transferFromVault(new BN(amount * LAMPORTS_PER_SOL), id, VAULT_SEED)
         .accounts({ admin: getAdminPublicKey(), payer: wallet.publicKey })
         .rpc(),
     );
@@ -158,7 +160,7 @@ export const TransferToVaultAndStartRental = async (
           new BN(amount * LAMPORTS_PER_SOL),
           new BN(duration * 60),
           id,
-          SECRET_KEY,
+          VAULT_SEED,
         )
         .accounts({ admin: getAdminPublicKey(), payer: wallet.publicKey })
         .rpc(),

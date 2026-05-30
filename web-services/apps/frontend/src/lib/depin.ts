@@ -1,35 +1,8 @@
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { getAdminPublicKey, SECRET_KEY } from "@/config";
 import { getContract } from "./contract";
-
-export const claimSolana = async (wallet: AnchorWallet, id: string) => {
-  try {
-    const program = getContract(wallet);
-    const txn = await program.methods
-      .claimRewards(id, SECRET_KEY)
-      .accounts({
-        admin: getAdminPublicKey(),
-        host: wallet.publicKey,
-      })
-      .rpc();
-
-    const transaction =
-      await program.provider.connection.confirmTransaction(txn);
-    if (transaction.value.err) {
-      console.error("Transaction failed", transaction.value.err);
-      return null;
-    }
-    return {
-      success: true,
-      signature: txn,
-      message: "Claim successful",
-    };
-  } catch (error) {
-    console.error("Error claiming Solana:", error);
-    throw error;
-  }
-};
+import axios from "axios";
+import { BACKEND_URL } from "@/config";
 
 export async function getEarnedSOL(
   machineId: string,
@@ -45,9 +18,22 @@ export async function getEarnedSOL(
     ],
     program.programId,
   );
-  const accountInfo = await program.provider.connection.getAccountInfo(pda);
-  if (!accountInfo) {
-    throw new Error("Account not found");
-  }
-  return Number(accountInfo.data.readBigUInt64LE(0) / BigInt(1e9));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const account = await (program.account as any).hostMachineRegistration.fetch(
+    pda,
+  );
+  return Number(account.earned) / 1e9;
+}
+
+export async function claimSolana(
+  machineId: string,
+  pubKey: string,
+  token: string,
+): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(
+    `${BACKEND_URL}/user/depin/claimSOL`,
+    { id: machineId, pubKey },
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return res.data;
 }

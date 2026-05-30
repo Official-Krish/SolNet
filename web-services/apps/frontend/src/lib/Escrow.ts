@@ -1,8 +1,10 @@
 import { type AnchorWallet } from "@solana/wallet-adapter-react";
 import { BN } from "bn.js";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getAdminPublicKey, SECRET_KEY } from "@/config";
+import { getAdminPublicKey } from "@/config";
 import { getContract } from "./contract";
+
+const VAULT_SEED = "axion_vault";
 
 export const StartRentalSessionWithEscrow = async (
   wallet: AnchorWallet,
@@ -63,7 +65,7 @@ export const FinalizeRentalWithEscrow = async (
       .finaliseRentalWithEscrow(
         id,
         new BN(amount * LAMPORTS_PER_SOL),
-        SECRET_KEY,
+        VAULT_SEED,
       )
       .accounts({ user: wallet.publicKey, admin: getAdminPublicKey() })
       .rpc();

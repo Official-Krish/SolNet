@@ -34,11 +34,9 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import Tooltip from "../Tooltip";
-import { claimSolana, getEarnedSOL } from "@/lib/depin";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { CodeBlock } from "../DepinHosting/CodeBlock";
 import { onboardingScript } from "../DepinHosting/constants/scripts";
-import { useTxConfirm } from "@/lib/useTxConfirm";
 
 export const DashboardTable = ({
   machines,
@@ -48,7 +46,6 @@ export const DashboardTable = ({
   setMachines: (machines: Machine[]) => void;
 }) => {
   const wallet = useAnchorWallet();
-  const { watch } = useTxConfirm(wallet?.publicKey?.toBase58());
   const navigate = useNavigate();
   const [key, setKey] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -131,52 +128,18 @@ export const DashboardTable = ({
     if (!wallet?.publicKey) return;
     setClaimingId(machineId);
     try {
-      const amount = await getEarnedSOL(machineId, wallet.publicKey, wallet);
-      const txn = await claimSolana(wallet!, machineId);
-      if (!txn?.success || !txn.signature) {
-        toast.error("Failed to claim SOL. Please try again.");
-        setClaimingId(null);
-        return;
+      const res = await axios.post(
+        `${BACKEND_URL}/user/depin/claimSOL`,
+        { id: machineId, pubKey: wallet.publicKey.toBase58() },
+        { headers: { Authorization: `${localStorage.getItem("token")}` } },
+      );
+      if (res.status === 200) {
+        toast.success("Claim request submitted. Rewards will arrive shortly.");
       }
-      watch(txn.signature, {
-        onConfirmed: async () => {
-          try {
-            const res = await axios.post(
-              `${BACKEND_URL}/user/depin/claimSOL`,
-              {
-                id: machineId,
-                pubKey: wallet?.publicKey?.toBase58(),
-                amount,
-                Key: key,
-              },
-              {
-                headers: { Authorization: `${localStorage.getItem("token")}` },
-              },
-            );
-            if (res.status === 200) {
-              toast.success("SOL claimed successfully");
-              setMachines(
-                machines.map((m) =>
-                  m.id === machineId
-                    ? { ...m, claimedSOL: m.claimedSOL + 1 }
-                    : m,
-                ),
-              );
-            }
-          } catch {
-            toast.error("Claim confirmed on-chain but backend update failed.");
-          }
-          setClaimingId(null);
-        },
-        onFailed: () => {
-          toast.error("Claim transaction failed on-chain.");
-          setClaimingId(null);
-        },
-      });
     } catch {
       toast.error("Failed to claim SOL. Please try again.");
-      setClaimingId(null);
     }
+    setClaimingId(null);
   };
   return (
     <div>
